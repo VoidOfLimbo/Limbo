@@ -1,6 +1,6 @@
 # Database Schema
 
-This document defines the planned database schema for Chip. Tables are grouped by build phase. Only Phase 1 and Phase 2 tables are fully specced — later phases will be detailed when their phase begins.
+This document defines the planned database schema for Limbo. Tables are grouped by build phase. Only Phase 1 and Phase 2 tables are fully specced — later phases will be detailed when their phase begins.
 
 ---
 

@@ -1,4 +1,4 @@
-# Chip - Product Summary
+# Limbo - Product Summary
 
 ## Planning Source of Truth
 This file is the high-level direction for the project. For each feature, there are more detailed documents in the `blueprint/` directory. Each of those documents should expand on the high-level features described here, and should be consistent with the direction set in this file.
@@ -12,7 +12,7 @@ When this file changes, review and update the rest of the planning docs in `blue
 - After each change, run a quick consistency pass on all files in `blueprint/` and update any sections that needs updating.
 
 ## What We Are Building
-Chip is a **community platform with a flexible page builder and personal productivity tools**, built with Laravel + Inertia (Vue frontend). Users create free accounts and join the main server ("Limbo") where they will have access to the pages created by the server owner ("VoidOfLimbo"). Users can request for demo access to certain pages or features marked as demoable for a demo period. The Super Owner ("VoidOfLimbo") runs the platform and hosts the main Server ("Limbo"). Users can choose to pay one off fee to have their own Server, where they can create their own page, subscribe to features, and build their own community.
+Limbo is a **community platform with a flexible page builder and personal productivity tools**, built with Laravel + Inertia (Vue frontend). Users create free accounts and join the main server ("Limbo") where they will have access to the pages created by the server owner ("VoidOfLimbo"). Users can request for demo access to certain pages or features marked as demoable for a demo period. The Super Owner ("VoidOfLimbo") runs the platform and hosts the main Server ("Limbo"). Users can choose to pay one off fee to have their own Server, where they can create their own page, subscribe to features, and build their own community.
 
 ## Tech Stack
 - Backend: Laravel 13
@@ -84,7 +84,7 @@ We are building iteratively — POC → MVP → polish, adding features and fixe
 - The Limbo server hosts public-facing pages visible to unauthenticated visitors and all platform users.
 
 ### Productivity Tools
-- Chip ships with built-in **personal productivity tools** available to all registered users.
+- Limbo ships with built-in **personal productivity tools** available to all registered users.
 - Tools include: **Expense Planner**, **Life Planner**, and other smart utility modules.
 - All productivity data is private to the user by default — not exposed to the community.
 - Server owners may optionally surface shared or server-scoped productivity features within their Server.

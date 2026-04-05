@@ -7,10 +7,12 @@ import {
     LayoutDashboardIcon,
     ShieldCheckIcon,
     SparklesIcon,
+    TicketIcon,
     UsersIcon,
     WalletIcon,
 } from 'lucide-vue-next';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -72,31 +74,24 @@ const features = [
 </script>
 
 <template>
-    <Head title="Welcome to Chip" />
+    <Head title="Welcome to Limbo" />
 
     <div class="min-h-screen bg-background text-foreground">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
-            <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+            <div class="mx-auto flex h-14 items-center justify-between px-6">
                 <div class="flex items-center gap-2.5">
                     <div class="flex size-7 items-center justify-center rounded-md bg-primary">
                         <AppLogoIcon className="size-4 fill-current text-primary-foreground" />
                     </div>
-                    <span class="text-sm font-semibold tracking-tight">Chip</span>
+                    <span class="text-sm font-semibold tracking-tight">Limbo</span>
                 </div>
 
                 <nav class="flex items-center gap-2">
+                    <ThemeToggle />
                     <Link v-if="$page.props.auth.user" :href="dashboard()">
                         <Button variant="outline" size="sm">Dashboard</Button>
                     </Link>
-                    <template v-else>
-                        <Link :href="login()">
-                            <Button variant="ghost" size="sm">Log in</Button>
-                        </Link>
-                        <Link v-if="canRegister" :href="register()">
-                            <Button size="sm">Register</Button>
-                        </Link>
-                    </template>
                 </nav>
             </div>
         </header>
@@ -121,23 +116,29 @@ const features = [
                 </h1>
 
                 <p class="mx-auto mt-6 max-w-xl text-base text-muted-foreground lg:text-lg">
-                    Chip is a community platform with a flexible page builder and personal productivity tools.
+                    Limbo is a community platform with a flexible page builder and personal productivity tools.
                     Build your space, invite your people, and own your experience.
                 </p>
 
                 <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
                     <Link v-if="canRegister" :href="register()">
                         <Button size="lg" class="gap-2">
-                            Sign Up for Free
+                            Create Free Account
                             <ChevronRightIcon class="size-4" />
                         </Button>
                     </Link>
                     <Link :href="login()">
                         <Button variant="outline" size="lg">Log in</Button>
                     </Link>
+                    <Link href="/invite">
+                        <Button variant="ghost" size="lg" class="gap-2">
+                            <TicketIcon class="size-4" />
+                            I have an invite code
+                        </Button>
+                    </Link>
                 </div>
 
-                <p class="mt-4 text-xs text-muted-foreground">Free forever. No credit card required.</p>
+                <p class="mt-4 text-xs text-muted-foreground">Creating an account is free. Some features require a subscription.</p>
             </div>
         </section>
 
@@ -179,12 +180,18 @@ const features = [
         <!-- CTA -->
         <section class="mx-auto max-w-6xl px-6 py-20 text-center">
             <h2 class="text-2xl font-bold tracking-tight lg:text-3xl">Ready to join Limbo?</h2>
-            <p class="mt-3 text-sm text-muted-foreground">Create a free account and explore the platform. No payment required.</p>
+            <p class="mt-3 text-sm text-muted-foreground">Create a free account and explore the platform. Premium features available via subscription.</p>
             <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Link v-if="canRegister" :href="register()">
                     <Button size="lg" class="gap-2">
-                        Get Started
+                        Create Free Account
                         <ChevronRightIcon class="size-4" />
+                    </Button>
+                </Link>
+                <Link href="/invite">
+                    <Button variant="outline" size="lg" class="gap-2">
+                        <TicketIcon class="size-4" />
+                        I have an invite code
                     </Button>
                 </Link>
             </div>
@@ -197,9 +204,9 @@ const features = [
                     <div class="flex size-5 items-center justify-center rounded bg-primary">
                         <AppLogoIcon className="size-3 fill-current text-primary-foreground" />
                     </div>
-                    <span class="text-xs font-medium text-muted-foreground">Chip by VoidOfLimbo</span>
+                    <span class="text-xs font-medium text-muted-foreground">Limbo by VoidOfLimbo</span>
                 </div>
-                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Chip. All rights reserved.</p>
+                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>
             </div>
         </footer>
     </div>
