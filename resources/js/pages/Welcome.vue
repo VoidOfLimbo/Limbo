@@ -15,8 +15,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { dashboard, login, privacyPolicy, register } from '@/routes';
+import { dashboard, invite, login, privacyPolicy, register } from '@/routes';
 
 withDefaults(
     defineProps<{
@@ -79,19 +78,29 @@ const features = [
     <div class="min-h-screen bg-background text-foreground">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
-            <div class="mx-auto flex h-14 items-center justify-between px-6">
+            <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                 <div class="flex items-center gap-2.5">
-                    <div class="flex size-7 items-center justify-center rounded-md bg-primary">
+                    <div class="flex size-8 items-center justify-center rounded-md bg-primary">
                         <AppLogoIcon className="size-4 fill-current text-primary-foreground" />
                     </div>
-                    <span class="text-sm font-semibold tracking-tight">Limbo</span>
+                    <span class="font-semibold tracking-tight">Limbo</span>
                 </div>
 
                 <nav class="flex items-center gap-2">
                     <ThemeToggle />
-                    <Link v-if="$page.props.auth.user" :href="dashboard()">
-                        <Button variant="outline" size="sm">Dashboard</Button>
-                    </Link>
+                    <template v-if="$page.props.auth.user">
+                        <Link :href="dashboard()">
+                            <Button variant="outline" size="sm">Dashboard</Button>
+                        </Link>
+                    </template>
+                    <template v-else>
+                        <Link :href="login()">
+                            <Button variant="ghost" size="sm">Log in</Button>
+                        </Link>
+                        <Link v-if="canRegister" :href="register()">
+                            <Button size="sm">Get started</Button>
+                        </Link>
+                    </template>
                 </nav>
             </div>
         </header>
@@ -99,97 +108,95 @@ const features = [
         <!-- Hero -->
         <section class="relative overflow-hidden">
             <div class="pointer-events-none absolute inset-0 -z-10">
-                <div
-                    class="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl"
-                />
+                <div class="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
             </div>
 
-            <div class="mx-auto px-6 py-24 text-center lg:py-36">
-                <Badge variant="outline" class="mb-6 gap-1.5 px-3 py-1">
+            <div class="mx-auto max-w-4xl px-6 py-36 text-center lg:py-48">
+                <Badge variant="outline" class="mb-10 gap-1.5 px-3.5 py-1.5 text-xs">
                     <SparklesIcon class="size-3" />
                     Now in early access
                 </Badge>
 
-                <h1 class="mx-auto text-4xl font-bold tracking-tight lg:text-6xl">
-                    Your community.<br />
-                    <span class="text-primary">Your space.</span>
+                <h1 class="mx-auto max-w-3xl text-5xl font-bold tracking-tight lg:text-7xl">
+                    By the Developer,
+                    For the Developer,
+                    <span class="text-primary">Of the Developer.</span>
                 </h1>
 
-                <p class="mx-auto mt-6 text-base text-muted-foreground lg:text-lg">
+                <p class="mx-auto mt-8 max-w-lg text-base leading-relaxed text-muted-foreground lg:text-lg">
                     Limbo is a community platform with a flexible page builder and personal productivity tools.
                     Build your space, invite your people, and own your experience.
                 </p>
 
-                <div class="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <div class="mt-12 flex flex-wrap items-center justify-center gap-4">
                     <Link v-if="canRegister" :href="register()">
-                        <Button size="lg" class="gap-2">
+                        <Button size="lg" class="h-12 gap-2 px-8 text-base">
                             Create Free Account
                             <ChevronRightIcon class="size-4" />
                         </Button>
                     </Link>
-                    <Link :href="login()">
-                        <Button variant="outline" size="lg">Log in</Button>
-                    </Link>
-                    <Link href="/invite">
-                        <Button variant="ghost" size="lg" class="gap-2">
+                    <Link :href="invite()">
+                        <Button variant="outline" size="lg" class="h-12 gap-2 px-8 text-base">
                             <TicketIcon class="size-4" />
                             I have an invite code
                         </Button>
                     </Link>
                 </div>
 
-                <p class="mt-4 text-xs text-muted-foreground">Creating an account is free. Some features require a subscription.</p>
+                <p class="mt-6 text-xs text-muted-foreground">Free to create an account. Some features require a subscription.</p>
             </div>
         </section>
 
-        <Separator />
-
         <!-- Features -->
-        <section class="mx-auto px-6 py-20">
-            <div class="mb-12 text-center">
-                <Badge variant="secondary" class="mb-3 gap-1.5">
-                    <LayoutDashboardIcon class="size-3" />
-                    Features
-                </Badge>
-                <h2 class="text-2xl font-bold tracking-tight lg:text-3xl">
-                    Everything you need to build your community
-                </h2>
-                <p class="mt-3 text-sm text-muted-foreground">From page builder to productivity tools — all in one place.</p>
-            </div>
+        <section class="bg-muted/30">
+            <div class="mx-auto max-w-6xl px-6 py-32">
+                <div class="mb-20 text-center">
+                    <Badge variant="secondary" class="mb-5 gap-1.5 px-3 py-1">
+                        <LayoutDashboardIcon class="size-3" />
+                        Features
+                    </Badge>
+                    <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
+                        Everything you need to build your community
+                    </h2>
+                    <p class="mx-auto mt-4 max-w-md text-muted-foreground">
+                        From page builder to productivity tools — all in one place.
+                    </p>
+                </div>
 
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div
-                    v-for="feature in features"
-                    :key="feature.title"
-                    class="group rounded-xl border border-border/60 bg-card p-6 transition-colors hover:border-border hover:bg-card/80"
-                >
-                    <div class="mb-4 flex items-start justify-between">
-                        <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <component :is="feature.icon" class="size-4" />
+                <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        v-for="feature in features"
+                        :key="feature.title"
+                        class="group rounded-2xl border border-border/50 bg-background p-8 transition-colors hover:border-border"
+                    >
+                        <div class="mb-6 flex items-start justify-between">
+                            <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <component :is="feature.icon" class="size-5" />
+                            </div>
+                            <Badge variant="outline" class="text-xs font-normal text-muted-foreground">{{ feature.badge }}</Badge>
                         </div>
-                        <Badge variant="outline" class="text-xs">{{ feature.badge }}</Badge>
+                        <h3 class="mb-2 text-base font-semibold">{{ feature.title }}</h3>
+                        <p class="text-sm leading-relaxed text-muted-foreground">{{ feature.description }}</p>
                     </div>
-                    <h3 class="mb-1.5 font-semibold">{{ feature.title }}</h3>
-                    <p class="text-sm leading-relaxed text-muted-foreground">{{ feature.description }}</p>
                 </div>
             </div>
         </section>
 
-        <Separator />
-
         <!-- CTA -->
-        <section class="mx-auto px-6 py-20 text-center">
-            <h2 class="text-2xl font-bold tracking-tight lg:text-3xl">Ready to join Limbo?</h2>
-            <p class="mt-3 text-sm text-muted-foreground">Create a free account and explore the platform. Premium features available via subscription.</p>
-            <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <section class="mx-auto max-w-2xl px-6 py-32 text-center">
+            <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join Limbo?</h2>
+            <p class="mx-auto mt-4 max-w-sm text-muted-foreground">
+                Create a free account and explore the platform. Premium features available via subscription.
+            </p>
+            <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
                 <Link v-if="canRegister" :href="register()">
-                    <Button size="lg" class="gap-2">
+                    <Button size="lg" class="h-12 gap-2 px-8 text-base">
                         Create Free Account
                         <ChevronRightIcon class="size-4" />
                     </Button>
                 </Link>
-                <Link href="/invite">
-                    <Button variant="outline" size="lg" class="gap-2">
+                <Link :href="invite()">
+                    <Button variant="outline" size="lg" class="h-12 gap-2 px-8 text-base">
                         <TicketIcon class="size-4" />
                         I have an invite code
                     </Button>
@@ -199,17 +206,17 @@ const features = [
 
         <!-- Footer -->
         <footer class="border-t border-border/40">
-            <div class="mx-auto flex items-center justify-between px-6 py-6">
+            <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
                 <div class="flex items-center gap-2">
                     <div class="flex size-5 items-center justify-center rounded bg-primary">
                         <AppLogoIcon className="size-3 fill-current text-primary-foreground" />
                     </div>
                     <span class="text-xs font-medium text-muted-foreground">Limbo by VoidOfLimbo</span>
                 </div>
+                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>
                 <div class="flex items-center gap-4">
                     <Link :href="privacyPolicy()" class="text-xs text-muted-foreground transition-colors hover:text-foreground">Privacy Policy</Link>
                 </div>
-                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>
             </div>
         </footer>
     </div>
