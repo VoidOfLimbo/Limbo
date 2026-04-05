@@ -16,7 +16,7 @@ import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login, privacyPolicy, register } from '@/routes';
 
 withDefaults(
     defineProps<{
@@ -104,18 +104,18 @@ const features = [
                 />
             </div>
 
-            <div class="mx-auto max-w-6xl px-6 py-24 text-center lg:py-36">
+            <div class="mx-auto px-6 py-24 text-center lg:py-36">
                 <Badge variant="outline" class="mb-6 gap-1.5 px-3 py-1">
                     <SparklesIcon class="size-3" />
                     Now in early access
                 </Badge>
 
-                <h1 class="mx-auto max-w-3xl text-4xl font-bold tracking-tight lg:text-6xl">
+                <h1 class="mx-auto text-4xl font-bold tracking-tight lg:text-6xl">
                     Your community.<br />
                     <span class="text-primary">Your space.</span>
                 </h1>
 
-                <p class="mx-auto mt-6 max-w-xl text-base text-muted-foreground lg:text-lg">
+                <p class="mx-auto mt-6 text-base text-muted-foreground lg:text-lg">
                     Limbo is a community platform with a flexible page builder and personal productivity tools.
                     Build your space, invite your people, and own your experience.
                 </p>
@@ -145,7 +145,7 @@ const features = [
         <Separator />
 
         <!-- Features -->
-        <section class="mx-auto max-w-6xl px-6 py-20">
+        <section class="mx-auto px-6 py-20">
             <div class="mb-12 text-center">
                 <Badge variant="secondary" class="mb-3 gap-1.5">
                     <LayoutDashboardIcon class="size-3" />
@@ -178,7 +178,7 @@ const features = [
         <Separator />
 
         <!-- CTA -->
-        <section class="mx-auto max-w-6xl px-6 py-20 text-center">
+        <section class="mx-auto px-6 py-20 text-center">
             <h2 class="text-2xl font-bold tracking-tight lg:text-3xl">Ready to join Limbo?</h2>
             <p class="mt-3 text-sm text-muted-foreground">Create a free account and explore the platform. Premium features available via subscription.</p>
             <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -199,12 +199,15 @@ const features = [
 
         <!-- Footer -->
         <footer class="border-t border-border/40">
-            <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+            <div class="mx-auto flex items-center justify-between px-6 py-6">
                 <div class="flex items-center gap-2">
                     <div class="flex size-5 items-center justify-center rounded bg-primary">
                         <AppLogoIcon className="size-3 fill-current text-primary-foreground" />
                     </div>
                     <span class="text-xs font-medium text-muted-foreground">Limbo by VoidOfLimbo</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <Link :href="privacyPolicy()" class="text-xs text-muted-foreground transition-colors hover:text-foreground">Privacy Policy</Link>
                 </div>
                 <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>
             </div>
