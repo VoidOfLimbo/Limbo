@@ -12,7 +12,13 @@ When this file changes, review and update the rest of the planning docs in `blue
 - After each change, run a quick consistency pass on all files in `blueprint/` and update any sections that needs updating.
 
 ## What We Are Building
-Limbo is a **community platform with a flexible page builder and personal productivity tools**, built with Laravel + Inertia (Vue frontend). Users create free accounts and join the main server ("Limbo") where they will have access to the pages created by the server owner ("VoidOfLimbo"). Users can request for demo access to certain pages or features marked as demoable for a demo period. The Super Owner ("VoidOfLimbo") runs the platform and hosts the main Server ("Limbo"). Users can choose to pay one off fee to have their own Server, where they can create their own page, subscribe to features, and build their own community.
+Limbo is a **long lost dream of a rogue developer which has become reality** — a community platform with a flexible page builder and personal productivity tools, built with Laravel + Inertia (Vue frontend). It is not sold as a product for everyone; it is built by a developer, for developers, of developers. Users create free accounts and join the main server ("Limbo") where they will have access to the pages created by the server owner ("VoidOfLimbo"). Users can request for demo access to certain pages or features marked as demoable for a demo period. The Super Owner ("VoidOfLimbo") runs the platform and hosts the main Server ("Limbo"). Users can choose to pay a one-off fee to have their own Server, where they can create their own pages, subscribe to features, and build their own community.
+
+## Brand Voice
+- Personal, raw, honest — not corporate.
+- "How did we get here?" not "The all-in-one platform."
+- Built by a rogue developer; the product should feel that way.
+- Developer-first audience. No marketing speak.
 
 ## Tech Stack
 - Backend: Laravel 13

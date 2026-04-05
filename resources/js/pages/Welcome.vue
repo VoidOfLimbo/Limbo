@@ -11,6 +11,7 @@ import {
     UsersIcon,
     WalletIcon,
 } from 'lucide-vue-next';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,20 @@ withDefaults(
         canRegister: true,
     },
 );
+
+const prefixes = ['By the', 'For the', 'Of the'];
+const currentIndex = ref(0);
+let cycleInterval: ReturnType<typeof setInterval>;
+
+onMounted(() => {
+    cycleInterval = setInterval(() => {
+        currentIndex.value = (currentIndex.value + 1) % prefixes.length;
+    }, 2200);
+});
+
+onBeforeUnmount(() => {
+    clearInterval(cycleInterval);
+});
 
 const features = [
     {
@@ -112,20 +127,19 @@ const features = [
             </div>
 
             <div class="mx-auto max-w-4xl px-6 py-36 text-center lg:py-48">
-                <Badge variant="outline" class="mb-10 gap-1.5 px-3.5 py-1.5 text-xs">
-                    <SparklesIcon class="size-3" />
-                    Now in early access
-                </Badge>
+                <p class="mb-6 text-sm font-medium tracking-widest text-muted-foreground uppercase">How did we get here?</p>
 
-                <h1 class="mx-auto max-w-3xl text-5xl font-bold tracking-tight lg:text-7xl">
-                    By the Developer,
-                    For the Developer,
-                    <span class="text-primary">Of the Developer.</span>
+                <h1 class="mx-auto flex flex-col items-center leading-none">
+                    <span class="relative mb-2 flex h-[1.2em] items-center overflow-hidden text-4xl font-bold tracking-tight text-muted-foreground lg:text-6xl">
+                        <Transition name="prefix" mode="out-in">
+                            <span :key="currentIndex" class="block">{{ prefixes[currentIndex] }}</span>
+                        </Transition>
+                    </span>
+                    <span class="text-7xl font-extrabold tracking-tight lg:text-[9rem]">Developer.</span>
                 </h1>
 
-                <p class="mx-auto mt-8 max-w-lg text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    Limbo is a community platform with a flexible page builder and personal productivity tools.
-                    Build your space, invite your people, and own your experience.
+                <p class="mx-auto mt-10 max-w-md text-base leading-relaxed text-muted-foreground lg:text-lg">
+                    Limbo is a long lost Dream of a rouge developer which has become reality. Check it out!
                 </p>
 
                 <div class="mt-12 flex flex-wrap items-center justify-center gap-4">
@@ -156,12 +170,11 @@ const features = [
                         Features
                     </Badge>
                     <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
-                        Everything you need to build your community
+                        What's inside?
                     </h2>
                     <p class="mx-auto mt-4 max-w-md text-muted-foreground">
                         From page builder to productivity tools — all in one place.
-                    </p>
-                </div>
+                    </p>                </div>
 
                 <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                     <div
@@ -221,3 +234,22 @@ const features = [
         </footer>
     </div>
 </template>
+
+<style scoped>
+.prefix-enter-active,
+.prefix-leave-active {
+    transition:
+        opacity 0.35s ease,
+        transform 0.35s ease;
+}
+
+.prefix-enter-from {
+    opacity: 0;
+    transform: translateY(14px);
+}
+
+.prefix-leave-to {
+    opacity: 0;
+    transform: translateY(-14px);
+}
+</style>
