@@ -24,7 +24,9 @@ defineProps<{
                 :href="home()"
                 class="relative z-20 flex items-center text-lg font-medium"
             >
-                <AppLogoIcon class="mr-2 size-8 fill-current text-white" />
+                <div class="mr-2 flex items-center justify-center rounded-md dark:bg-white dark:p-1">
+                    <AppLogoIcon class="size-8" />
+                </div>
                 {{ name }}
             </Link>
         </div>

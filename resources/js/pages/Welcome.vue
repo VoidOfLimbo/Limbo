@@ -5,7 +5,9 @@ import {
     CalendarIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    HomeIcon,
     LayoutDashboardIcon,
+    RocketIcon,
     ShieldCheckIcon,
     SparklesIcon,
     TicketIcon,
@@ -28,6 +30,21 @@ withDefaults(
         canRegister: true,
     },
 );
+
+const navSections = [
+    { id: 'hero', label: 'Home', icon: HomeIcon },
+    { id: 'features', label: 'Features', icon: LayoutDashboardIcon },
+    { id: 'cta', label: 'Join', icon: RocketIcon },
+];
+
+const activeSection = ref('hero');
+const hoveredSection = ref<string | null>(null);
+
+function scrollToSection(id: string): void {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+let sectionObserver: IntersectionObserver | null = null;
 
 const prefixes = ['By the', 'For the', 'Of the'];
 const currentIndex = ref(0);
@@ -54,10 +71,27 @@ onMounted(() => {
     cycleInterval = setInterval(() => {
         currentIndex.value = (currentIndex.value + 1) % prefixes.length;
     }, 2200);
+
+    sectionObserver = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    activeSection.value = entry.target.id;
+                }
+            });
+        },
+        { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
+    );
+
+    navSections.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (el) sectionObserver!.observe(el);
+    });
 });
 
 onBeforeUnmount(() => {
     clearInterval(cycleInterval);
+    sectionObserver?.disconnect();
 });
 
 const features = [
@@ -114,8 +148,8 @@ const features = [
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
                 <div class="flex items-center gap-2.5">
-                    <div class="flex size-8 items-center justify-center rounded-md bg-primary">
-                        <AppLogoIcon className="size-4 fill-current text-primary-foreground" />
+                    <div class="flex items-center justify-center rounded-md dark:bg-white dark:p-1">
+                        <AppLogoIcon className="size-8" />
                     </div>
                     <span class="font-semibold tracking-tight">Limbo</span>
                 </div>
@@ -139,14 +173,42 @@ const features = [
             </div>
         </header>
 
+        <!-- Scroll dot nav -->
+        <nav class="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-2.5 lg:flex">
+            <button
+                v-for="section in navSections"
+                :key="section.id"
+                :class="[
+                    'flex cursor-pointer items-center overflow-hidden rounded-l-full border-y border-l py-2 backdrop-blur-sm transition-all duration-300',
+                    hoveredSection === section.id ? 'gap-2 pl-3 pr-3' : 'gap-0 pl-2.5 pr-2.5',
+                    activeSection === section.id
+                        ? 'border-primary/50 bg-primary/10 text-primary shadow-[-4px_0_10px_2px] shadow-primary/20'
+                        : 'border-border/40 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground',
+                ]"
+                @click="scrollToSection(section.id)"
+                @mouseenter="hoveredSection = section.id"
+                @mouseleave="hoveredSection = null"
+            >
+                <component :is="section.icon" class="size-4 shrink-0" />
+                <span
+                    :class="[
+                        'min-w-0 overflow-hidden whitespace-nowrap text-xs font-medium transition-all duration-300',
+                        hoveredSection === section.id ? 'max-w-24 opacity-100' : 'max-w-0 opacity-0',
+                    ]"
+                >
+                    {{ section.label }}
+                </span>
+            </button>
+        </nav>
+
         <!-- Hero -->
-        <section class="relative overflow-hidden">
+        <section id="hero" class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
             <div class="pointer-events-none absolute inset-0 -z-10">
                 <div class="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
             </div>
 
-            <div class="px-6 py-36 text-center lg:py-48">
-                <p class="neon-header mb-6 text-6xl font-extrabold tracking-tight lg:text-8xl">How did we get here?</p>
+            <div class="flex w-full flex-col items-center px-6 py-24 text-center">
+                <p class="neon-header mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl">How did we get here?</p>
 
                 <h1 class="mx-auto flex flex-col items-center leading-none">
                     <span class="tech-prefix relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl">
@@ -158,11 +220,11 @@ const features = [
                     >Developer</span>
                 </h1>
 
-                <p class="mx-auto mt-10 text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    Limbo is a long lost Dream of a rouge developer which has become reality. Check it out!
+                <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
+                    Limbo is a long lost Dream of a rouge developer which has become reality. Feel free to check it out !
                 </p>
 
-                <div class="mt-12 flex flex-wrap items-center justify-center gap-4">
+                <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
                     <Link v-if="canRegister" :href="register()">
                         <Button size="lg" class="h-12 gap-2 px-8 text-base">
                             Create Free Account
@@ -177,16 +239,16 @@ const features = [
                     </Link>
                 </div>
 
-                <div class="mt-6 flex flex-col items-center gap-2">
-                    <p class="text-xs text-muted-foreground">Looking for someone specific? scroll down to see more</p>
-                    <ChevronDownIcon class="bounce-arrow size-4 text-muted-foreground" />
+                <div class="mt-10 flex flex-col items-center gap-2">
+                    <p class="text-xs text-muted-foreground italic">scroll down to see more</p>
+                    <ChevronDownIcon class="bounce-arrow size-8 text-muted-foreground" />
                 </div>
             </div>
         </section>
 
         <!-- Features -->
-        <section class="bg-muted/30">
-            <div class="px-6 py-32">
+        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center bg-muted/30">
+            <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <Badge variant="secondary" class="mb-5 gap-1.5 px-3 py-1">
                         <LayoutDashboardIcon class="size-3" />
@@ -219,7 +281,7 @@ const features = [
         </section>
 
         <!-- CTA -->
-        <section class="px-6 py-32 text-center">
+        <section id="cta" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join Limbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
@@ -244,12 +306,12 @@ const features = [
         <footer class="border-t border-border/40">
             <div class="mx-auto flex flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
                 <div class="flex items-center gap-2">
-                    <div class="flex size-5 items-center justify-center rounded bg-primary">
-                        <AppLogoIcon className="size-3 fill-current text-primary-foreground" />
+                    <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
+                        <AppLogoIcon className="size-5" />
                     </div>
                     <span class="text-xs font-medium text-muted-foreground">
                         Limbo by
-                        <a href="https://www.linkedin.com/in/bipin-paneru/" target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-foreground">VoidOfLimbo</a>
+                        <a href="https://www.linkedin.com/in/bipin-paneru/" target="_blank" rel="noopener noreferrer" class="cursor-pointer font-semibold text-foreground underline decoration-primary/50 underline-offset-2 transition-all hover:decoration-primary">VoidOfLimbo</a>
                     </span>
                 </div>
                 <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>

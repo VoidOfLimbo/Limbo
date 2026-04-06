@@ -24,8 +24,8 @@ import { home } from '@/routes';
                     </Link>
                     <div class="h-4 w-px bg-border" />
                     <div class="flex items-center gap-2">
-                        <div class="flex size-5 items-center justify-center rounded bg-primary">
-                            <AppLogoIcon className="size-3 fill-current text-primary-foreground" />
+                        <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
+                            <AppLogoIcon className="size-5" />
                         </div>
                         <span class="text-xs font-medium text-muted-foreground">Limbo</span>
                     </div>

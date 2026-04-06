@@ -1,0 +1,82 @@
+/*
+ * Limbo — Custom Scrollbar
+ *
+ * Inspired by the brand logo: crimson trishul on raw black brushstrokes.
+ * Thin track, deep red thumb, glow on hover.
+ * Covers both vertical and horizontal axes.
+ * Works in Webkit/Blink (Chrome, Edge, Safari) via pseudo-elements,
+ * and Firefox via the standardised scrollbar-* properties.
+ */
+
+/* ── Firefox ────────────────────────────────────────────────────────────── */
+* {
+    scrollbar-color: hsl(0 72% 42%) transparent;
+    scrollbar-width: thin;
+}
+
+/* ── Webkit / Blink ─────────────────────────────────────────────────────── */
+
+/* Shared track + thumb sizing */
+::-webkit-scrollbar {
+    width: 5px;   /* vertical */
+    height: 5px;  /* horizontal */
+}
+
+/* Track — invisible at rest, subtle on hover */
+::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-track:hover {
+    background: hsl(0 0% 0% / 0.08);
+}
+
+.dark ::-webkit-scrollbar-track:hover {
+    background: hsl(0 0% 100% / 0.06);
+}
+
+/* Corner where vertical meets horizontal */
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Thumb — crimson red, rounded */
+::-webkit-scrollbar-thumb {
+    background: hsl(0 72% 42%);
+    border-radius: 9999px;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 80% 52%);
+    box-shadow: 0 0 6px 1px hsl(0 84% 50% / 0.5);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: hsl(0 84% 38%);
+}
+
+/* ── Light mode override — slightly lighter thumb ───────────────────────── */
+:root ::-webkit-scrollbar-thumb {
+    background: hsl(0 68% 38%);
+}
+
+:root ::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 76% 48%);
+}
+
+/* ── Dark mode — brighter thumb against dark background ─────────────────── */
+.dark ::-webkit-scrollbar-thumb {
+    background: hsl(0 75% 45%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 84% 55%);
+    box-shadow: 0 0 8px 2px hsl(0 84% 50% / 0.4);
+}
+
+.dark * {
+    scrollbar-color: hsl(0 75% 45%) transparent;
+}
