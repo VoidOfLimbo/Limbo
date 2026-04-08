@@ -14,12 +14,16 @@ import {
     UsersIcon,
     WalletIcon,
 } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import BounceWrapper from '@/components/BounceWrapper.vue';
+import GlitchText from '@/components/GlitchText.vue';
+import NeonHeader from '@/components/NeonHeader.vue';
+import SceneBackground from '@/components/SceneBackground.vue';
+import ScrambleText from '@/components/ScrambleText.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useTextScramble } from '@/composables/useTextScramble';
 import { dashboard, invite, login, privacyPolicy, register } from '@/routes';
 
 withDefaults(
@@ -39,6 +43,61 @@ const navSections = [
 
 const activeSection = ref('hero');
 const hoveredSection = ref<string | null>(null);
+const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
+
+// ── Per-nav-item character reveal state ───────────────────────────────────
+// Tracks how many chars are currently visible for each section label.
+// startReveal ticks up left-to-right; startHide ticks down right-to-left.
+const charRevealCount = reactive<Record<string, number>>({});
+const charRevealTimers = new Map<string, ReturnType<typeof setInterval>>();
+
+function clearCharTimer(id: string): void {
+    const t = charRevealTimers.get(id);
+
+    if (t !== undefined) {
+        clearInterval(t);
+    }
+
+    charRevealTimers.delete(id);
+}
+
+function startReveal(id: string, length: number): void {
+    clearCharTimer(id);
+
+    if (charRevealCount[id] === undefined) {
+        charRevealCount[id] = 0;
+    }
+
+    const timer = setInterval(() => {
+        if ((charRevealCount[id] ?? 0) >= length) {
+            clearCharTimer(id);
+
+            return;
+        }
+
+        charRevealCount[id] = (charRevealCount[id] ?? 0) + 1;
+    }, 45);
+
+    charRevealTimers.set(id, timer);
+}
+
+function startHide(id: string): void {
+    clearCharTimer(id);
+
+    const timer = setInterval(() => {
+        const count = charRevealCount[id] ?? 0;
+
+        if (count <= 0) {
+            clearCharTimer(id);
+
+            return;
+        }
+
+        charRevealCount[id] = count - 1;
+    }, 35);
+
+    charRevealTimers.set(id, timer);
+}
 
 function scrollToSection(id: string): void {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -46,32 +105,7 @@ function scrollToSection(id: string): void {
 
 let sectionObserver: IntersectionObserver | null = null;
 
-const prefixes = ['By the', 'For the', 'Of the'];
-const currentIndex = ref(0);
-const { scrambled: scrambledPrefix, scramble: scramblePrefix } = useTextScramble(prefixes[0]);
-const glitchVariant = ref(0);
-let cycleInterval: ReturnType<typeof setInterval>;
-
-function triggerDevGlitch(): void {
-    glitchVariant.value = 0;
-    requestAnimationFrame(() => {
-        glitchVariant.value = Math.floor(Math.random() * 10) + 1;
-        setTimeout(() => {
-            glitchVariant.value = 0;
-        }, 800);
-    });
-}
-
-watch(currentIndex, (newVal) => {
-    scramblePrefix(prefixes[newVal]);
-    triggerDevGlitch();
-});
-
 onMounted(() => {
-    cycleInterval = setInterval(() => {
-        currentIndex.value = (currentIndex.value + 1) % prefixes.length;
-    }, 2200);
-
     sectionObserver = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
@@ -85,13 +119,16 @@ onMounted(() => {
 
     navSections.forEach(({ id }) => {
         const el = document.getElementById(id);
-        if (el) sectionObserver!.observe(el);
+
+        if (el) {
+            sectionObserver!.observe(el);
+        }
     });
 });
 
 onBeforeUnmount(() => {
-    clearInterval(cycleInterval);
     sectionObserver?.disconnect();
+    charRevealTimers.forEach((t) => clearInterval(t));
 });
 
 const features = [
@@ -173,55 +210,70 @@ const features = [
             </div>
         </header>
 
-        <!-- Scroll dot nav -->
-        <nav class="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-2.5 lg:flex">
+        <!-- Section scroll nav (fixed right edge, icon pills) -->
+        <nav class="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-2.5 lg:flex">
             <button
                 v-for="section in navSections"
                 :key="section.id"
                 :class="[
-                    'flex cursor-pointer items-center overflow-hidden rounded-l-full border-y border-l py-2 backdrop-blur-sm transition-all duration-300',
-                    hoveredSection === section.id ? 'gap-2 pl-3 pr-3' : 'gap-0 pl-2.5 pr-2.5',
+                    'flex cursor-pointer items-center gap-2 overflow-hidden rounded-l-full border-y border-l py-2 pl-3 pr-3 shadow-sm backdrop-blur-sm transition-[colors,transform] duration-200 hover:scale-[1.06]',
                     activeSection === section.id
-                        ? 'border-primary/50 bg-primary/10 text-primary shadow-[-4px_0_10px_2px] shadow-primary/20'
-                        : 'border-border/40 bg-background/60 text-muted-foreground hover:border-border hover:text-foreground',
+                        ? 'border-primary/60 bg-primary/15 text-primary shadow-[-4px_0_12px_2px] shadow-primary/25'
+                        : 'border-border bg-card text-foreground/60 hover:border-border/80 hover:bg-card hover:text-foreground',
                 ]"
                 @click="scrollToSection(section.id)"
-                @mouseenter="hoveredSection = section.id"
-                @mouseleave="hoveredSection = null"
+                @mouseenter="hoveredSection = section.id; startReveal(section.id, section.label.length)"
+                @mouseleave="hoveredSection = null; startHide(section.id)"
             >
                 <component :is="section.icon" class="size-4 shrink-0" />
-                <span
-                    :class="[
-                        'min-w-0 overflow-hidden whitespace-nowrap text-xs font-medium transition-all duration-300',
-                        hoveredSection === section.id ? 'max-w-24 opacity-100' : 'max-w-0 opacity-0',
-                    ]"
-                >
-                    {{ section.label }}
+                <span class="flex overflow-hidden whitespace-nowrap text-xs font-medium">
+                    <span
+                        v-for="(char, ci) in section.label.split('')"
+                        :key="ci"
+                        :style="{
+                            display: 'inline-block',
+                            overflow: 'hidden',
+                            maxWidth: (charRevealCount[section.id] ?? 0) > ci ? '2em' : '0',
+                            opacity: (charRevealCount[section.id] ?? 0) > ci ? '1' : '0',
+                            transform: (charRevealCount[section.id] ?? 0) > ci ? 'none' : 'translateY(3px)',
+                            transition: 'opacity 100ms ease, transform 100ms ease, max-width 65ms ease',
+                        }"
+                    >{{ char }}</span>
                 </span>
             </button>
         </nav>
 
         <!-- Hero -->
-        <section id="hero" class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
-            <div class="pointer-events-none absolute inset-0 -z-10">
-                <div class="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-            </div>
+        <section id="hero" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
+            <SceneBackground variant="hero" />
 
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
-                <p class="neon-header mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl">How did we get here?</p>
+                <NeonHeader
+                    text="Limbo"
+                    tag="p"
+                    class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
+                    :spread="12"
+                    :base-duration="7"
+                    :tilt="[{ chars: 'L', angle: 18, top: '6px' }]"
+                />
 
                 <h1 class="mx-auto flex flex-col items-center leading-none">
-                    <span class="tech-prefix relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl">
-                        <span class="block">{{ scrambledPrefix }}</span>
-                    </span>
-                    <span
-                        :class="['glitch-text text-6xl font-extrabold tracking-tight lg:text-8xl', glitchVariant > 0 ? `glitch-fire-${glitchVariant}` : '']"
-                        data-text="Developer"
-                    >Developer</span>
+                    <ScrambleText
+                        :texts="['By the', 'For the', 'Of the']"
+                        tag="span"
+                        class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
+                        @change="glitchRef?.trigger()"
+                    />
+                    <GlitchText
+                        ref="glitchRef"
+                        text="Developer"
+                        tag="span"
+                        class="text-6xl font-extrabold tracking-tight lg:text-8xl"
+                    />
                 </h1>
 
                 <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    Limbo is a long lost Dream of a rouge developer which has become reality. Feel free to check it out !
+                    Limbo is a long lost dream of a rouge developer who wanted efficiency and discipline in his life.
                 </p>
 
                 <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
@@ -240,14 +292,17 @@ const features = [
                 </div>
 
                 <div class="mt-10 flex flex-col items-center gap-2">
-                    <p class="text-xs text-muted-foreground italic">scroll down to see more</p>
-                    <ChevronDownIcon class="bounce-arrow size-8 text-muted-foreground" />
+                    <p class="text-xs italic text-muted-foreground">scroll down to see more</p>
+                    <BounceWrapper direction="down" distance="7px" :duration="2">
+                        <ChevronDownIcon class="size-8 text-muted-foreground" />
+                    </BounceWrapper>
                 </div>
             </div>
         </section>
 
         <!-- Features -->
-        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center bg-muted/30">
+        <section id="features" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden bg-muted/30">
+            <SceneBackground variant="features" />
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <Badge variant="secondary" class="mb-5 gap-1.5 px-3 py-1">
@@ -281,7 +336,8 @@ const features = [
         </section>
 
         <!-- CTA -->
-        <section id="cta" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
+        <section id="cta" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden px-6 py-24 text-center">
+            <SceneBackground variant="cta" />
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join Limbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
@@ -322,197 +378,3 @@ const features = [
         </footer>
     </div>
 </template>
-
-<style scoped>
-/* Glitch effect on Developer — triggered on prefix change */
-.glitch-text {
-    position: relative;
-}
-
-.glitch-fire-1  { animation: glitch-1  0.70s forwards; }
-.glitch-fire-2  { animation: glitch-2  0.65s forwards; }
-.glitch-fire-3  { animation: glitch-3  0.60s forwards; }
-.glitch-fire-4  { animation: glitch-4  0.75s forwards; }
-.glitch-fire-5  { animation: glitch-5  0.50s forwards; }
-.glitch-fire-6  { animation: glitch-6  0.80s forwards; }
-.glitch-fire-7  { animation: glitch-7  0.60s forwards; }
-.glitch-fire-8  { animation: glitch-8  0.70s forwards; }
-.glitch-fire-9  { animation: glitch-9  0.65s forwards; }
-.glitch-fire-10 { animation: glitch-10 0.75s forwards; }
-
-/* 1: Classic RGB split + skew */
-@keyframes glitch-1 {
-    0%, 100% { text-shadow: none; transform: none; filter: none; }
-    15% { text-shadow: -4px 0 #f0f, 4px 0 #0ff; transform: translateX(-3px) skewX(-3deg); }
-    30% { text-shadow: 4px 0 #f0f, -4px 0 #0ff; transform: translateX(3px) skewX(3deg); }
-    50% { text-shadow: -2px 0 #f0f, 2px 0 #0ff; transform: translateX(-1px); filter: blur(0.5px); }
-    70% { text-shadow: none; transform: none; filter: none; }
-}
-
-/* 2: Rapid micro shake */
-@keyframes glitch-2 {
-    0%, 100% { transform: none; }
-    10% { transform: translateX(-7px); }
-    20% { transform: translateX(7px); }
-    30% { transform: translateX(-5px); }
-    40% { transform: translateX(5px); }
-    50% { transform: translateX(-3px); }
-    60% { transform: translateX(3px); }
-    75% { transform: translateX(-1px); }
-    85% { transform: none; }
-}
-
-/* 3: Horizontal tear + clip slice */
-@keyframes glitch-3 {
-    0%, 100% { transform: none; text-shadow: none; clip-path: none; }
-    20% { transform: translateX(10px); text-shadow: -10px 0 #0ff; }
-    35% { transform: translateX(-8px); text-shadow: 8px 0 #f0f; clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); }
-    50% { transform: translateX(5px); clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); text-shadow: -5px 0 #0ff; }
-    65% { clip-path: none; transform: none; text-shadow: none; }
-}
-
-/* 4: Heavy blur burst then snap */
-@keyframes glitch-4 {
-    0%, 100% { filter: none; text-shadow: none; }
-    20% { filter: blur(3px) brightness(1.8); }
-    40% { filter: blur(0) brightness(2) contrast(1.5); text-shadow: 0 0 25px #0ff, 0 0 50px #0ff; }
-    65% { filter: blur(1.5px); text-shadow: none; }
-    80% { filter: none; }
-}
-
-/* 5: Color invert flash */
-@keyframes glitch-5 {
-    0%, 100% { filter: none; }
-    15% { filter: invert(1); }
-    22% { filter: none; }
-    40% { filter: invert(1) hue-rotate(90deg); }
-    47% { filter: none; }
-    60% { filter: invert(1) saturate(2); }
-    67% { filter: none; }
-}
-
-/* 6: Neon pulse burst */
-@keyframes glitch-6 {
-    0%, 100% { text-shadow: none; transform: none; }
-    15% { text-shadow: 0 0 30px #0ff, 0 0 60px #0ff, 0 0 100px #0ff; transform: scale(1.03); }
-    35% { text-shadow: 0 0 15px #f0f, 0 0 40px #f0f; transform: scale(0.98); }
-    55% { text-shadow: 0 0 50px #0ff, 0 0 90px #0ff; transform: scale(1.02); }
-    75% { text-shadow: 0 0 10px #0ff; transform: none; }
-    90% { text-shadow: none; }
-}
-
-/* 7: Horizontal mega tear */
-@keyframes glitch-7 {
-    0%, 100% { transform: none; text-shadow: none; }
-    15% { transform: translateX(22px); text-shadow: -22px 0 #f0f; }
-    30% { transform: translateX(-18px); text-shadow: 18px 0 #0ff; }
-    45% { transform: translateX(10px); text-shadow: -10px 0 #f0f; }
-    60% { transform: translateX(-5px); text-shadow: 5px 0 #0ff; }
-    75% { transform: none; text-shadow: none; }
-}
-
-/* 8: Scale distort — compress then stretch */
-@keyframes glitch-8 {
-    0%, 100% { transform: none; }
-    20% { transform: scaleX(1.1) scaleY(0.92); }
-    35% { transform: scaleX(0.88) scaleY(1.08); }
-    50% { transform: scaleX(1.06) scaleY(0.96); }
-    65% { transform: scaleX(0.96) scaleY(1.03); }
-    80% { transform: none; }
-}
-
-/* 9: Ghost double image */
-@keyframes glitch-9 {
-    0%, 100% { text-shadow: none; }
-    20% { text-shadow: 8px 4px 0 rgba(0, 255, 255, 0.55), -8px -4px 0 rgba(255, 0, 255, 0.55); }
-    40% { text-shadow: -8px -4px 0 rgba(0, 255, 255, 0.55), 8px 4px 0 rgba(255, 0, 255, 0.55); }
-    60% { text-shadow: 4px 8px 0 rgba(0, 255, 255, 0.35), -4px 0 0 rgba(255, 0, 255, 0.35); }
-    80% { text-shadow: none; }
-}
-
-/* 10: Data corrupt — rapid multi-colour chaos */
-@keyframes glitch-10 {
-    0%, 100% { transform: none; text-shadow: none; filter: none; }
-    10% { transform: translateX(-6px) skewX(6deg); text-shadow: 6px 0 #f00; filter: brightness(1.6); }
-    20% { transform: translateX(6px) skewX(-6deg); text-shadow: -6px 0 #0f0; filter: brightness(0.7); }
-    30% { transform: translateX(-4px) skewY(3deg); text-shadow: 4px 0 #00f; filter: none; }
-    40% { transform: translateX(4px) skewY(-3deg); text-shadow: -4px 0 #f0f; filter: contrast(2); }
-    50% { transform: translateX(-3px); text-shadow: 3px 0 #0ff; filter: brightness(1.3); }
-    60% { transform: translateX(3px); text-shadow: -3px 0 #ff0; filter: none; }
-    70% { transform: none; text-shadow: none; filter: none; }
-}
-
-/* Neon flicker on heading */
-.neon-header {
-    color: #f8fafc;
-    animation: neon-flicker 7s infinite;
-}
-
-@keyframes neon-flicker {
-    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-        color: #f8fafc;
-        text-shadow:
-            0 0 10px rgba(248, 250, 252, 0.4),
-            0 0 30px rgba(248, 250, 252, 0.2),
-            0 0 60px rgba(148, 163, 184, 0.15);
-    }
-    20%, 24%, 55% {
-        color: rgba(248, 250, 252, 0.6);
-        text-shadow: none;
-    }
-    22% {
-        color: rgba(248, 250, 252, 0.85);
-        text-shadow: 0 0 5px rgba(248, 250, 252, 0.2);
-    }
-}
-
-/* Techy terminal glow on the cycling prefix */
-.tech-prefix {
-    color: #22d3ee;
-    text-shadow:
-        0 0 18px rgba(34, 211, 238, 0.5),
-        0 0 40px rgba(34, 211, 238, 0.2);
-    animation: tech-flicker 5s infinite;
-}
-
-@keyframes tech-flicker {
-    0%,
-    93%,
-    100% {
-        opacity: 1;
-        text-shadow:
-            0 0 18px rgba(34, 211, 238, 0.5),
-            0 0 40px rgba(34, 211, 238, 0.2);
-    }
-    94% {
-        opacity: 0.65;
-        text-shadow: 0 0 4px rgba(34, 211, 238, 0.2);
-    }
-    95% {
-        opacity: 1;
-        text-shadow:
-            0 0 28px rgba(34, 211, 238, 0.7),
-            0 0 60px rgba(34, 211, 238, 0.35);
-    }
-    96% {
-        opacity: 0.8;
-    }
-}
-
-/* Bouncing scroll arrow */
-.bounce-arrow {
-    animation: bounce-down 2s ease-in-out infinite;
-}
-
-@keyframes bounce-down {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(7px);
-    }
-}
-
-
-</style>

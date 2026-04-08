@@ -1,0 +1,35 @@
+/*
+ * Limbo — Brand Styles
+ *
+ * Global brand resources shared across the Limbo UI.
+ * All component-specific animations and styles live in each
+ * component's own <style scoped> block.
+ *
+ * Brand tokens defined here (in :root):
+ *   --color-theme, --color-theme-hover, --color-theme-active, --color-theme-glow
+ *   --color-neon, --color-neon-glow
+ *   --font-neon
+ */
+
+/*
+ * Neon font: Orbitron (primary) + Exo 2 (fallback)
+ * Weights 700–900 only — display faces, swap during load.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Exo+2:wght@700;800;900&display=swap');
+
+/* ── Brand tokens ────────────────────────────────────────────────────────── */
+
+:root {
+    /* Primary brand colour — crimson red from the trishul logo */
+    --color-theme: hsl(0 75% 45%);
+    --color-theme-hover: hsl(0 84% 55%);
+    --color-theme-active: hsl(0 84% 38%);
+    --color-theme-glow: hsl(0 84% 50% / 0.4);
+
+    /* Neon accent — electric cyan, classic neon-tube aesthetic */
+    --color-neon: hsl(190 100% 65%);
+    --color-neon-glow: hsl(190 100% 65% / 0.45);
+
+    /* Neon display font — Orbitron (geometric/techno) + Exo 2 (fallback) */
+    --font-neon: 'Orbitron', 'Exo 2', ui-sans-serif, system-ui, sans-serif;
+}

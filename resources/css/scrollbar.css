@@ -10,7 +10,7 @@
 
 /* ── Firefox ────────────────────────────────────────────────────────────── */
 * {
-    scrollbar-color: hsl(0 72% 42%) transparent;
+    scrollbar-color: var(--color-theme) transparent;
     scrollbar-width: thin;
 }
 
@@ -44,39 +44,39 @@
 
 /* Thumb — crimson red, rounded */
 ::-webkit-scrollbar-thumb {
-    background: hsl(0 72% 42%);
+    background: var(--color-theme);
     border-radius: 9999px;
     transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 80% 52%);
-    box-shadow: 0 0 6px 1px hsl(0 84% 50% / 0.5);
+    background: var(--color-theme-hover);
+    box-shadow: 0 0 6px 1px var(--color-theme-glow);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: hsl(0 84% 38%);
+    background: var(--color-theme-active);
 }
 
 /* ── Light mode override — slightly lighter thumb ───────────────────────── */
 :root ::-webkit-scrollbar-thumb {
-    background: hsl(0 68% 38%);
+    background: var(--color-theme);
 }
 
 :root ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 76% 48%);
+    background: var(--color-theme-hover);
 }
 
 /* ── Dark mode — brighter thumb against dark background ─────────────────── */
 .dark ::-webkit-scrollbar-thumb {
-    background: hsl(0 75% 45%);
+    background: var(--color-theme);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-    background: hsl(0 84% 55%);
-    box-shadow: 0 0 8px 2px hsl(0 84% 50% / 0.4);
+    background: var(--color-theme-hover);
+    box-shadow: 0 0 8px 2px var(--color-theme-glow);
 }
 
 .dark * {
-    scrollbar-color: hsl(0 75% 45%) transparent;
+    scrollbar-color: var(--color-theme) transparent;
 }

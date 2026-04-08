@@ -39,6 +39,20 @@ requestAnimationFrame(() => {
 - Cyan `#22d3ee` with layered `text-shadow`: tight inner glow + wide outer bloom
 - Flicker near end of cycle (93–96%) rather than beginning — feels like warm-up
 
-## clip-path with animations
-- `clip-path: none` doesn't interpolate — jump-cut only (intentional for glitch)
-- Animating `clip-path: polygon(...)` between two states does interpolate smoothly
+## Scroll section nav — icon pill that expands on hover
+
+### Architecture
+- Fixed `right-0`, `rounded-l-full` with only `border-y border-l` — flush to right edge, rounded on left only
+- Icon always visible; label span expands via `max-width` transition
+- `hoveredSection` Vue ref drives expansion; `activeSection` (IntersectionObserver) drives the active glow state
+
+### Why toggled Tailwind classes fail for per-item expand
+- `transition-all` on a flex button causes sibling reflow when gap/padding changes — all items shift together
+- Toggling `max-w-0`/`max-w-24` classes via `:class` binding races with Vue's re-render and Tailwind's class precedence — browser can't determine winner reliably
+- **Fix**: use `:style="{ maxWidth: hovered ? '6rem' : '0px', opacity: hovered ? '1' : '0' }"` — inline styles bypass all class precedence issues; each element's value is set directly
+- Keep button layout (`gap`, `padding`) **static** — only let the span's own `max-width`/`opacity` animate
+
+### IntersectionObserver for scroll-spy
+- `rootMargin: '-45% 0px -45% 0px'` creates a trigger band in the middle 10% of the viewport
+- Whichever section crosses that band becomes `activeSection`
+- Sections need `scroll-mt-16` to offset the sticky 64px header when `scrollIntoView` is called
