@@ -14,12 +14,11 @@ import {
     UsersIcon,
     WalletIcon,
 } from 'lucide-vue-next';
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import BounceWrapper from '@/components/BounceWrapper.vue';
 import GlitchText from '@/components/GlitchText.vue';
 import NeonHeader from '@/components/NeonHeader.vue';
-import SceneBackground from '@/components/SceneBackground.vue';
 import ScrambleText from '@/components/ScrambleText.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
@@ -45,58 +44,13 @@ const activeSection = ref('hero');
 const hoveredSection = ref<string | null>(null);
 const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
 
-// ── Per-nav-item character reveal state ───────────────────────────────────
-// Tracks how many chars are currently visible for each section label.
-// startReveal ticks up left-to-right; startHide ticks down right-to-left.
-const charRevealCount = reactive<Record<string, number>>({});
-const charRevealTimers = new Map<string, ReturnType<typeof setInterval>>();
-
-function clearCharTimer(id: string): void {
-    const t = charRevealTimers.get(id);
-
-    if (t !== undefined) {
-        clearInterval(t);
-    }
-
-    charRevealTimers.delete(id);
-}
-
-function startReveal(id: string, length: number): void {
-    clearCharTimer(id);
-
-    if (charRevealCount[id] === undefined) {
-        charRevealCount[id] = 0;
-    }
-
-    const timer = setInterval(() => {
-        if ((charRevealCount[id] ?? 0) >= length) {
-            clearCharTimer(id);
-
-            return;
-        }
-
-        charRevealCount[id] = (charRevealCount[id] ?? 0) + 1;
-    }, 45);
-
-    charRevealTimers.set(id, timer);
-}
-
-function startHide(id: string): void {
-    clearCharTimer(id);
-
-    const timer = setInterval(() => {
-        const count = charRevealCount[id] ?? 0;
-
-        if (count <= 0) {
-            clearCharTimer(id);
-
-            return;
-        }
-
-        charRevealCount[id] = count - 1;
-    }, 35);
-
-    charRevealTimers.set(id, timer);
+function navZoom(index: number): number {
+    if (hoveredSection.value === null) return 1;
+    const hi = navSections.findIndex((s) => s.id === hoveredSection.value);
+    if (hi === -1) return 1;
+    if (index === hi) return 1.5;
+    if (Math.abs(index - hi) === 1) return 1.2;
+    return 1;
 }
 
 function scrollToSection(id: string): void {
@@ -128,7 +82,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     sectionObserver?.disconnect();
-    charRevealTimers.forEach((t) => clearInterval(t));
 });
 
 const features = [
@@ -213,39 +166,37 @@ const features = [
         <!-- Section scroll nav (fixed right edge, icon pills) -->
         <nav class="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-2.5 lg:flex">
             <button
-                v-for="section in navSections"
+                v-for="(section, index) in navSections"
                 :key="section.id"
+                :style="{ zoom: navZoom(index) }"
                 :class="[
-                    'flex cursor-pointer items-center gap-2 overflow-hidden rounded-l-full border-y border-l py-2 pl-3 pr-3 shadow-sm backdrop-blur-sm transition-[colors,transform] duration-200 hover:scale-[1.06]',
+                    'flex cursor-pointer items-center gap-2 overflow-hidden rounded-l-full border-y border-l py-2 pl-3 pr-3 shadow-sm backdrop-blur-sm transition-[color,background-color,border-color,box-shadow,zoom] duration-300',
                     activeSection === section.id
                         ? 'border-primary/60 bg-primary/15 text-primary shadow-[-4px_0_12px_2px] shadow-primary/25'
                         : 'border-border bg-card text-foreground/60 hover:border-border/80 hover:bg-card hover:text-foreground',
                 ]"
                 @click="scrollToSection(section.id)"
-                @mouseenter="hoveredSection = section.id; startReveal(section.id, section.label.length)"
-                @mouseleave="hoveredSection = null; startHide(section.id)"
+                @mouseenter="hoveredSection = section.id"
+                @mouseleave="hoveredSection = null"
             >
                 <component :is="section.icon" class="size-4 shrink-0" />
-                <span class="flex overflow-hidden whitespace-nowrap text-xs font-medium">
-                    <span
-                        v-for="(char, ci) in section.label.split('')"
-                        :key="ci"
-                        :style="{
-                            display: 'inline-block',
-                            overflow: 'hidden',
-                            maxWidth: (charRevealCount[section.id] ?? 0) > ci ? '2em' : '0',
-                            opacity: (charRevealCount[section.id] ?? 0) > ci ? '1' : '0',
-                            transform: (charRevealCount[section.id] ?? 0) > ci ? 'none' : 'translateY(3px)',
-                            transition: 'opacity 100ms ease, transform 100ms ease, max-width 65ms ease',
-                        }"
-                    >{{ char }}</span>
+                <span
+                    class="min-w-0 overflow-hidden whitespace-nowrap text-xs font-medium transition-all duration-300"
+                    :style="{
+                        maxWidth: hoveredSection === section.id ? '6rem' : '0px',
+                        opacity: hoveredSection === section.id ? '1' : '0',
+                    }"
+                >
+                    {{ section.label }}
                 </span>
             </button>
         </nav>
 
         <!-- Hero -->
-        <section id="hero" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
-            <SceneBackground variant="hero" />
+        <section id="hero" class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
+            <div class="pointer-events-none absolute inset-0 -z-10">
+                <div class="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
+            </div>
 
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
                 <NeonHeader
@@ -301,8 +252,7 @@ const features = [
         </section>
 
         <!-- Features -->
-        <section id="features" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden bg-muted/30">
-            <SceneBackground variant="features" />
+        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center bg-muted/30">
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <Badge variant="secondary" class="mb-5 gap-1.5 px-3 py-1">
@@ -336,8 +286,7 @@ const features = [
         </section>
 
         <!-- CTA -->
-        <section id="cta" class="relative isolate flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden px-6 py-24 text-center">
-            <SceneBackground variant="cta" />
+        <section id="cta" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join Limbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
