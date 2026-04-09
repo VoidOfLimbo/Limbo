@@ -9,7 +9,7 @@ import { home } from '@/routes';
 </script>
 
 <template>
-    <Head title="Invite Code — Limbo" />
+    <Head title="Invite Code — VoidOfLimbo" />
 
     <div class="min-h-screen bg-background text-foreground">
         <!-- Nav -->
@@ -27,7 +27,7 @@ import { home } from '@/routes';
                         <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
                             <AppLogoIcon className="size-5" />
                         </div>
-                        <span class="text-xs font-medium text-muted-foreground">Limbo</span>
+                        <span class="text-xs font-medium text-muted-foreground">VoidOfLimbo</span>
                     </div>
                 </div>
                 <ThemeToggle />

@@ -45,11 +45,24 @@ const hoveredSection = ref<string | null>(null);
 const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
 
 function navZoom(index: number): number {
-    if (hoveredSection.value === null) return 1;
+    if (hoveredSection.value === null) {
+        return 1;
+    }
+
     const hi = navSections.findIndex((s) => s.id === hoveredSection.value);
-    if (hi === -1) return 1;
-    if (index === hi) return 1.5;
-    if (Math.abs(index - hi) === 1) return 1.2;
+
+    if (hi === -1) {
+        return 1;
+    }
+
+    if (index === hi) {
+        return 1.5;
+    }
+
+    if (Math.abs(index - hi) === 1) {
+        return 1.2;
+    }
+
     return 1;
 }
 
@@ -131,9 +144,9 @@ const features = [
 </script>
 
 <template>
-    <Head title="Welcome to Limbo" />
+    <Head title="Welcome to VoidOfLimbo" />
 
-    <div class="min-h-screen bg-background text-foreground">
+    <div class="min-h-screen bg-background text-foreground overflow-hidden">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
@@ -141,7 +154,7 @@ const features = [
                     <div class="flex items-center justify-center rounded-md dark:bg-white dark:p-1">
                         <AppLogoIcon className="size-8" />
                     </div>
-                    <span class="font-semibold tracking-tight">Limbo</span>
+                    <span class="font-semibold tracking-tight">VoidOfLimbo</span>
                 </div>
 
                 <nav class="flex items-center gap-2">
@@ -194,13 +207,9 @@ const features = [
 
         <!-- Hero -->
         <section id="hero" class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
-            <div class="pointer-events-none absolute inset-0 -z-10">
-                <div class="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-            </div>
-
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
                 <NeonHeader
-                    text="Limbo"
+                    text="VoidOfLimbo"
                     tag="p"
                     class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
                     :spread="12"
@@ -224,7 +233,7 @@ const features = [
                 </h1>
 
                 <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    Limbo is a long lost dream of a rouge developer who wanted efficiency and discipline in his life.
+                    VoidOfLimbo is a long lost dream of a rouge developer who wanted efficiency and discipline in his life.
                 </p>
 
                 <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
@@ -255,10 +264,6 @@ const features = [
         <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center bg-muted/30">
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
-                    <Badge variant="secondary" class="mb-5 gap-1.5 px-3 py-1">
-                        <LayoutDashboardIcon class="size-3" />
-                        Features
-                    </Badge>
                     <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
                         What's inside?
                     </h2>
@@ -287,7 +292,7 @@ const features = [
 
         <!-- CTA -->
         <section id="cta" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
-            <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join Limbo?</h2>
+            <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join VoidOfLimbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
             </p>
@@ -315,11 +320,11 @@ const features = [
                         <AppLogoIcon className="size-5" />
                     </div>
                     <span class="text-xs font-medium text-muted-foreground">
-                        Limbo by
+                        VoidOfLimbo by
                         <a href="https://www.linkedin.com/in/bipin-paneru/" target="_blank" rel="noopener noreferrer" class="cursor-pointer font-semibold text-foreground underline decoration-primary/50 underline-offset-2 transition-all hover:decoration-primary">VoidOfLimbo</a>
                     </span>
                 </div>
-                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} Limbo. All rights reserved.</p>
+                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} VoidOfLimbo. All rights reserved.</p>
                 <div class="flex items-center gap-4">
                     <Link :href="privacyPolicy()" class="text-xs text-muted-foreground transition-colors hover:text-foreground">Privacy Policy</Link>
                 </div>

@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Limbo';
+const appName = import.meta.env.VITE_APP_NAME || 'VoidOfLimbo';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

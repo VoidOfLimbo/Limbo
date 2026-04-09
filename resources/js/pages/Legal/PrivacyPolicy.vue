@@ -8,7 +8,7 @@ import { home } from '@/routes';
 </script>
 
 <template>
-    <Head title="Privacy Policy — Limbo" />
+    <Head title="Privacy Policy — VoidOfLimbo" />
 
     <div class="min-h-screen bg-background text-foreground">
         <!-- Nav -->
@@ -26,7 +26,7 @@ import { home } from '@/routes';
                         <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
                             <AppLogoIcon className="size-5" />
                         </div>
-                        <span class="text-xs font-medium text-muted-foreground">Limbo</span>
+                        <span class="text-xs font-medium text-muted-foreground">VoidOfLimbo</span>
                     </div>
                 </div>
                 <ThemeToggle />
@@ -55,14 +55,14 @@ import { home } from '@/routes';
                     <h2 class="mb-4 text-xl font-semibold tracking-tight">1. Introduction</h2>
                     <div class="space-y-3 text-sm leading-7 text-muted-foreground">
                         <p>
-                            Welcome to Limbo ("we," "our," or "us"). Limbo is a community platform that provides page
+                            Welcome to VoidOfLimbo ("we," "our," or "us"). VoidOfLimbo is a community platform that provides page
                             building tools, community servers, and personal productivity features. We are operated by
                             VoidOfLimbo.
                         </p>
                         <p>
                             This Privacy Policy describes how we collect, use, disclose, and safeguard your information
-                            when you use our platform at <span class="font-medium text-foreground">limbo.app</span> and
-                            related services. Please read it carefully. By using Limbo, you agree to the practices
+                            when you use our platform at <span class="font-medium text-foreground">voidoflimbo.app</span> and
+                            related services. Please read it carefully. By using VoidOfLimbo, you agree to the practices
                             described here.
                         </p>
                     </div>
@@ -159,7 +159,7 @@ import { home } from '@/routes';
                                 <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                                 <span>
                                     <span class="font-medium text-foreground">Safety:</span> To protect the rights,
-                                    safety, or property of Limbo, our users, or the public.
+                                    safety, or property of VoidOfLimbo, our users, or the public.
                                 </span>
                             </li>
                         </ul>
@@ -185,7 +185,7 @@ import { home } from '@/routes';
                     <h2 class="mb-4 text-xl font-semibold tracking-tight">6. Cookies & Local Storage</h2>
                     <div class="space-y-3 text-sm leading-7 text-muted-foreground">
                         <p>
-                            Limbo uses session cookies to keep you signed in and maintain your preferences (such as
+                            VoidOfLimbo uses session cookies to keep you signed in and maintain your preferences (such as
                             theme selection). We do not use advertising or tracking cookies. No third-party analytics
                             scripts are loaded on the platform.
                         </p>
