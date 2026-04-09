@@ -17,6 +17,7 @@ import {
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import BounceWrapper from '@/components/BounceWrapper.vue';
+import DynamicFloatingMenu from '@/components/DynamicFloatingMenu.vue';
 import GlitchText from '@/components/GlitchText.vue';
 import NeonHeader from '@/components/NeonHeader.vue';
 import ScrambleText from '@/components/ScrambleText.vue';
@@ -41,30 +42,7 @@ const navSections = [
 ];
 
 const activeSection = ref('hero');
-const hoveredSection = ref<string | null>(null);
 const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
-
-function navZoom(index: number): number {
-    if (hoveredSection.value === null) {
-        return 1;
-    }
-
-    const hi = navSections.findIndex((s) => s.id === hoveredSection.value);
-
-    if (hi === -1) {
-        return 1;
-    }
-
-    if (index === hi) {
-        return 1.5;
-    }
-
-    if (Math.abs(index - hi) === 1) {
-        return 1.2;
-    }
-
-    return 1;
-}
 
 function scrollToSection(id: string): void {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -144,9 +122,77 @@ const features = [
 </script>
 
 <template>
+
     <Head title="Welcome to VoidOfLimbo" />
 
-    <div class="min-h-screen bg-background text-foreground overflow-hidden">
+    <div class="relative min-h-screen text-foreground">
+        <!-- Techy SVG background -->
+        <div class="fixed inset-0 -z-10 bg-background">
+            <svg class="absolute inset-0 h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                    <!-- Small grid -->
+                    <pattern id="grid-sm" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.3"
+                            class="text-foreground/[0.05]" />
+                    </pattern>
+                    <!-- Large grid -->
+                    <pattern id="grid-lg" width="160" height="160" patternUnits="userSpaceOnUse">
+                        <path d="M 160 0 L 0 0 0 160" fill="none" stroke="currentColor" stroke-width="0.7"
+                            class="text-foreground/[0.08]" />
+                    </pattern>
+                    <!-- Radial glow top-left -->
+                    <radialGradient id="g1" cx="15%" cy="15%" r="55%">
+                        <stop offset="0%" stop-color="hsl(var(--primary))" stop-opacity="0.14" />
+                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
+                    </radialGradient>
+                    <!-- Radial glow bottom-right -->
+                    <radialGradient id="g2" cx="85%" cy="75%" r="50%">
+                        <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.11" />
+                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
+                    </radialGradient>
+                    <!-- Radial glow center -->
+                    <radialGradient id="g3" cx="50%" cy="50%" r="40%">
+                        <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.06" />
+                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
+                    </radialGradient>
+                </defs>
+
+                <!-- Grid layers -->
+                <rect width="100%" height="100%" fill="url(#grid-sm)" />
+                <rect width="100%" height="100%" fill="url(#grid-lg)" />
+
+                <!-- Glow washes -->
+                <rect width="100%" height="100%" fill="url(#g1)" />
+                <rect width="100%" height="100%" fill="url(#g2)" />
+                <rect width="100%" height="100%" fill="url(#g3)" />
+
+                <!-- Circuit traces: top-left cluster -->
+                <g fill="none" stroke="hsl(var(--primary))" stroke-opacity="0.2" stroke-width="1.2">
+                    <polyline points="0,120 80,120 80,60 200,60" class="trace" />
+                    <polyline points="80,0 80,60" class="trace" />
+                    <circle cx="80" cy="60" r="3" fill="hsl(var(--primary))" fill-opacity="0.4" class="node" />
+                    <circle cx="200" cy="60" r="2" fill="hsl(var(--primary))" fill-opacity="0.3" />
+                    <circle cx="80" cy="120" r="2" fill="hsl(var(--primary))" fill-opacity="0.3" />
+                </g>
+
+                <!-- Circuit traces: right cluster -->
+                <g fill="none" stroke="#8b5cf6" stroke-opacity="0.18" stroke-width="1.2">
+                    <polyline points="100%,180 calc(100% - 60px),180 calc(100% - 60px),100 calc(100% - 220px),100"
+                        class="trace trace-alt" />
+                    <circle r="3" fill="#8b5cf6" fill-opacity="0.4" class="node"
+                        style="cx: calc(100% - 60px); cy: 180px" />
+                    <circle r="2" fill="#8b5cf6" fill-opacity="0.3" style="cx: calc(100% - 60px); cy: 100px" />
+                </g>
+
+                <!-- Circuit traces: bottom cluster -->
+                <g fill="none" stroke="#06b6d4" stroke-opacity="0.14" stroke-width="1">
+                    <polyline points="0,80% 120,80% 120,75% 320,75%" class="trace trace-slow" />
+                    <polyline points="120,80% 120,100%" class="trace trace-slow" />
+                    <circle cx="120" r="2.5" fill="#06b6d4" fill-opacity="0.35" class="node" style="cy: 80%" />
+                </g>
+            </svg>
+        </div>
+
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
@@ -166,74 +212,33 @@ const features = [
                     </template>
                     <template v-else>
                         <Link :href="login()">
-                            <Button variant="ghost" size="sm">Log in</Button>
-                        </Link>
-                        <Link v-if="canRegister" :href="register()">
-                            <Button size="sm">Get started</Button>
+                            <Button size="sm">Join Now</Button>
                         </Link>
                     </template>
                 </nav>
             </div>
         </header>
 
-        <!-- Section scroll nav (fixed right edge, icon pills) -->
-        <nav class="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 flex-col items-end gap-2.5 lg:flex">
-            <button
-                v-for="(section, index) in navSections"
-                :key="section.id"
-                :style="{ zoom: navZoom(index) }"
-                :class="[
-                    'flex cursor-pointer items-center gap-2 overflow-hidden rounded-l-full border-y border-l py-2 pl-3 pr-3 shadow-sm backdrop-blur-sm transition-[color,background-color,border-color,box-shadow,zoom] duration-300',
-                    activeSection === section.id
-                        ? 'border-primary/60 bg-primary/15 text-primary shadow-[-4px_0_12px_2px] shadow-primary/25'
-                        : 'border-border bg-card text-foreground/60 hover:border-border/80 hover:bg-card hover:text-foreground',
-                ]"
-                @click="scrollToSection(section.id)"
-                @mouseenter="hoveredSection = section.id"
-                @mouseleave="hoveredSection = null"
-            >
-                <component :is="section.icon" class="size-4 shrink-0" />
-                <span
-                    class="min-w-0 overflow-hidden whitespace-nowrap text-xs font-medium transition-all duration-300"
-                    :style="{
-                        maxWidth: hoveredSection === section.id ? '6rem' : '0px',
-                        opacity: hoveredSection === section.id ? '1' : '0',
-                    }"
-                >
-                    {{ section.label }}
-                </span>
-            </button>
-        </nav>
+        <!-- DynamicFloatingMenu -->
+        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="bottom" alignment="center"
+            :collapsible="true" @select="scrollToSection" />
 
         <!-- Hero -->
-        <section id="hero" class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
+        <section id="hero"
+            class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
-                <NeonHeader
-                    text="VoidOfLimbo"
-                    tag="p"
-                    class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
-                    :spread="12"
-                    :base-duration="7"
-                    :tilt="[{ chars: 'L', angle: 18, top: '6px' }]"
-                />
+                <NeonHeader text="VoidOfLimbo" tag="p" class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
+                    :spread="12" :base-duration="7" :tilt="[{ chars: 'L', angle: 18, top: '6px' }]" />
 
-                <h1 class="mx-auto flex flex-col items-center leading-none">
-                    <ScrambleText
-                        :texts="['By the', 'For the', 'Of the']"
-                        tag="span"
-                        class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
-                        @change="glitchRef?.trigger()"
-                    />
-                    <GlitchText
-                        ref="glitchRef"
-                        text="Developer"
-                        tag="span"
-                        class="text-6xl font-extrabold tracking-tight lg:text-8xl"
-                    />
-                </h1>
+                <ScrambleText :texts="['By the', 'For the', 'Of the']" tag="span"
+                    class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
+                    @change="glitchRef?.trigger()" />
+
+                <GlitchText ref="glitchRef" text="Developer" tag="span"
+                    class="text-6xl font-extrabold tracking-tight lg:text-8xl" />
 
                 <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    VoidOfLimbo is a long lost dream of a rouge developer who wanted efficiency and discipline in his life.
+                    Bespoke page, Interesting features, Productivity tools, Integrated community, Nihil
                 </p>
 
                 <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
@@ -261,7 +266,7 @@ const features = [
         </section>
 
         <!-- Features -->
-        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center bg-muted/30">
+        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center relative">
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
@@ -269,19 +274,19 @@ const features = [
                     </h2>
                     <p class="mx-auto mt-4 text-muted-foreground">
                         From page builder to productivity tools — all in one place.
-                    </p>                </div>
+                    </p>
+                </div>
 
                 <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                    <div
-                        v-for="feature in features"
-                        :key="feature.title"
-                        class="group rounded-2xl border border-border/50 bg-background p-8 transition-colors hover:border-border"
-                    >
+                    <div v-for="feature in features" :key="feature.title"
+                        class="group rounded-2xl border border-border/60 bg-background/70 p-8 backdrop-blur-sm transition-colors hover:border-primary/40 hover:bg-background/90">
                         <div class="mb-6 flex items-start justify-between">
                             <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
                                 <component :is="feature.icon" class="size-5" />
                             </div>
-                            <Badge variant="outline" class="text-xs font-normal text-muted-foreground">{{ feature.badge }}</Badge>
+                            <Badge variant="outline" class="text-xs font-normal text-muted-foreground">{{ feature.badge
+                                }}
+                            </Badge>
                         </div>
                         <h3 class="mb-2 text-base font-semibold">{{ feature.title }}</h3>
                         <p class="text-sm leading-relaxed text-muted-foreground">{{ feature.description }}</p>
@@ -291,7 +296,8 @@ const features = [
         </section>
 
         <!-- CTA -->
-        <section id="cta" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
+        <section id="cta"
+            class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join VoidOfLimbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
@@ -313,7 +319,7 @@ const features = [
         </section>
 
         <!-- Footer -->
-        <footer class="border-t border-border/40">
+        <footer class="border-t border-border/40 bg-background/70 backdrop-blur-sm">
             <div class="mx-auto flex flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
                 <div class="flex items-center gap-2">
                     <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
@@ -321,14 +327,66 @@ const features = [
                     </div>
                     <span class="text-xs font-medium text-muted-foreground">
                         VoidOfLimbo by
-                        <a href="https://www.linkedin.com/in/bipin-paneru/" target="_blank" rel="noopener noreferrer" class="cursor-pointer font-semibold text-foreground underline decoration-primary/50 underline-offset-2 transition-all hover:decoration-primary">VoidOfLimbo</a>
+                        <a href="https://www.linkedin.com/in/bipin-paneru/" target="_blank" rel="noopener noreferrer"
+                            class="cursor-pointer font-semibold text-foreground underline decoration-primary/50 underline-offset-2 transition-all hover:decoration-primary">VoidOfLimbo</a>
                     </span>
                 </div>
-                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} VoidOfLimbo. All rights reserved.</p>
+                <p class="text-xs text-muted-foreground">© {{ new Date().getFullYear() }} VoidOfLimbo. All rights
+                    reserved.</p>
                 <div class="flex items-center gap-4">
-                    <Link :href="privacyPolicy()" class="text-xs text-muted-foreground transition-colors hover:text-foreground">Privacy Policy</Link>
+                    <Link :href="privacyPolicy()"
+                        class="text-xs text-muted-foreground transition-colors hover:text-foreground">
+                        Privacy Policy</Link>
                 </div>
             </div>
         </footer>
     </div>
 </template>
+
+<style scoped>
+@keyframes node-pulse {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        r: 3;
+    }
+
+    50% {
+        opacity: 1;
+        r: 5;
+    }
+}
+
+@keyframes trace-flow {
+    0% {
+        stroke-dashoffset: 600;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.node {
+    animation: node-pulse 3s ease-in-out infinite;
+}
+
+.trace {
+    stroke-dasharray: 600;
+    stroke-dashoffset: 600;
+    animation: trace-flow 6s ease-in-out infinite;
+}
+
+.trace-alt {
+    animation-delay: 2s;
+    animation-duration: 8s;
+}
+
+.trace-slow {
+    animation-delay: 4s;
+    animation-duration: 10s;
+}
+
+/* keep old drift keyframes compat in case of hot reload remnants */
+</style>
