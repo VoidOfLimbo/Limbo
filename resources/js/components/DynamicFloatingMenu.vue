@@ -110,7 +110,7 @@ function tooltipStyle(itemId: string): Record<string, string> {
 <template>
     <nav
         :class="[
-            'fixed z-40 hidden items-end gap-1 overflow-visible border border-white/10 bg-[rgba(83,83,83,0.4)] p-3 shadow-2xl shadow-black/20 backdrop-blur-[50px] lg:flex',
+            'fixed z-40 hidden items-end gap-2 overflow-visible border border-white/10 bg-[rgba(83,83,83,0.4)] p-3 shadow-2xl shadow-black/20 backdrop-blur-[50px] lg:flex',
             positionClasses,
             flexDirectionClass,
             collapsible ? 'opacity-10 transition-opacity duration-300 hover:opacity-100' : '',
@@ -120,7 +120,7 @@ function tooltipStyle(itemId: string): Record<string, string> {
             v-for="item in items"
             :key="item.id"
             class="group relative transition-[margin] duration-300"
-            :class="isVertical ? 'hover:my-2' : 'hover:mx-2'"
+            :class="isVertical ? 'hover:my-3' : 'hover:mx-3'"
             @mouseenter="hoveredItem = item.id"
             @mouseleave="hoveredItem = null"
         >

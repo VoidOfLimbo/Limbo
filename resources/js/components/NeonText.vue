@@ -1,235 +1,263 @@
+<!--
+    NeonText — per-character neon sign flicker animation.
+
+    Renders `text` as individual <span> elements, each running an independently
+    timed CSS @keyframe that simulates a neon tube flickering: resting solid,
+    then bursting into rapid blinks, then settling back.
+
+    Basic:
+        <NeonText text="VoidOfLimbo" tag="p" default-neon-color="#ff0044" />
+
+    Per-character colour:
+        :flicker="[{ chars: 'V', neonColor: '#00ffff' }]"
+
+    Per-character tilt:
+        :tilt="[{ chars: 'L', angle: 18, top: '6px' }]"
+
+    All extra attributes (class, id, aria-*, …) pass through to the root element.
+-->
 <script lang="ts">
-/**
- * Tilt group — overrides transform/position for one or more specific characters.
- *
- * Example:
- *   :tilt="[
- *     { chars: 'L',         angle: 18, top: '4px' },
- *     { chars: ['?', '!'],  angle: 20, left: '-3px', scale: 1.1 },
- *     { chars: ['H', 'h'],  angle: -12, bottom: '2px', right: '1px' },
- *   ]"
- */
 export type TiltGroup = {
-    /** Single char string or array of char strings (case-sensitive). */
     chars: string | string[];
-    /** Rotation in degrees. Positive = clockwise. */
+    /** Rotation angle in degrees. Positive = clockwise. */
     angle?: number;
-    /** Uniform scale factor. 1 = normal, 1.2 = 20% larger, 0.8 = 20% smaller. */
+    /** Scale factor (1 = normal size). */
     scale?: number;
-    /** CSS offset from top (e.g. '4px', '0.2em'). Positive moves down. */
+    /** Offset from the top edge (e.g. '4px'). */
     top?: string;
-    /** CSS offset from bottom (e.g. '4px'). Positive moves up. */
     bottom?: string;
-    /** CSS offset from left (e.g. '4px'). Positive moves right. */
     left?: string;
-    /** CSS offset from right (e.g. '4px'). Positive moves left. */
     right?: string;
+};
+
+export type CharFlicker = {
+    chars: string | string[];
+    /** Neon glow colour for this character (hex, rgb, etc.). */
+    neonColor?: string;
+    minFlickers?: number;
+    maxFlickers?: number;
+    /** How often this character flickers, in seconds. */
+    interval?: number;
+    /** Blink duty-cycle speed. Lower = briefer dark cuts (more "on"). Default: 0.4. */
+    speed?: number;
 };
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-
-/**
- * NeonText — per-character neon blink component.
- *
- * Offsets use CSS length strings (px, em, rem, %) and behave like
- * CSS `top/bottom/left/right` on a `position: relative` element.
- */
-
-type CharTransform = {
-    angle: number | null;
-    scale: number | null;
-    top: string | null;
-    bottom: string | null;
-    left: string | null;
-    right: string | null;
-};
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = withDefaults(
     defineProps<{
         text: string;
-        /** Max spread across which delays are distributed (seconds) */
+        tag?: 'span' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'div';
+        /** Resting fill colour for all characters. Accepts any CSS colour. Default: var(--foreground). */
+        color?: string;
+        /** Max seconds of delay spread across characters (golden-ratio distributed). Default: 10. */
         spread?: number;
-        /** Base cycle duration per character (seconds) */
-        baseDuration?: number;
-        /** Optional tilt groups — characters listed here get transforms applied */
         tilt?: TiltGroup[];
+        flicker?: CharFlicker[];
+        /** Neon glow colour used by all characters unless overridden per-char. Default: '#ff0044'. */
+        defaultNeonColor?: string;
+        /** Minimum blinks per flicker burst for all characters. Default: 2. */
+        defaultMinFlickers?: number;
+        /** Maximum blinks per flicker burst for all characters. Default: 6. */
+        defaultMaxFlickers?: number;
+        /** Base flicker interval in seconds. Default: 4. */
+        defaultInterval?: number;
+        /** Blink duty-cycle speed for all characters. Lower = briefer dark cuts. Default: 0.4. */
+        defaultSpeed?: number;
     }>(),
     {
+        tag: 'span',
+        color: 'var(--foreground)',
         spread: 10,
-        baseDuration: 5,
         tilt: () => [],
+        flicker: () => [],
+        defaultNeonColor: '#ff0044',
+        defaultMinFlickers: 2,
+        defaultMaxFlickers: 6,
+        defaultInterval: 9,
+        defaultSpeed: 0.7,
     },
 );
 
-type CharData = {
-    char: string;
-    delay: string;
-    duration: string;
-    transform: CharTransform | null;
-};
+defineOptions({ inheritAttrs: false });
 
-/** Build a lookup map: char → CharTransform */
-const tiltMap = computed<Map<string, CharTransform>>(() => {
-    const map = new Map<string, CharTransform>();
+const uid = Math.random().toString(36).slice(2, 8);
 
-    for (const group of props.tilt) {
-        const chars = Array.isArray(group.chars) ? group.chars : [group.chars];
-        const transform: CharTransform = {
-            angle: group.angle ?? null,
-            scale: group.scale ?? null,
-            top: group.top ?? null,
-            bottom: group.bottom ?? null,
-            left: group.left ?? null,
-            right: group.right ?? null,
-        };
+const tiltMap = computed<Map<string, TiltGroup>>(() => {
+    const map = new Map<string, TiltGroup>();
 
-        for (const c of chars) {
-            map.set(c, transform);
+    for (const g of props.tilt) {
+        const targets = Array.isArray(g.chars) ? g.chars : [g.chars];
+
+        for (const c of targets) {
+            map.set(c, g);
         }
     }
 
     return map;
 });
 
-const chars = computed<CharData[]>(() =>
-    [...props.text].map((char, i) => {
-        const delay = ((i * 1.618034) % props.spread).toFixed(2);
-        const duration = (props.baseDuration + (i % 5) * 0.8).toFixed(1);
-        const displayChar = char === ' ' ? '\u00A0' : char;
-        const transform = tiltMap.value.get(char) ?? null;
+type Frozen = { neonColor: string; flickerCount: number; duration: number; speed: number; name: string };
+const frozen = ref<Frozen[]>([]);
 
-        return {
-            char: displayChar,
-            delay: `${delay}s`,
-            duration: `${duration}s`,
-            transform,
+function initFrozen(random: boolean): void {
+    const flickerMap = new Map<string, CharFlicker>();
+
+    for (const f of props.flicker) {
+        const targets = Array.isArray(f.chars) ? f.chars : [f.chars];
+
+        for (const c of targets) {
+            flickerMap.set(c, f);
+        }
+    }
+
+    frozen.value = [...props.text].map((char, i) => {
+        const cfg = flickerMap.get(char);
+
+        const neonColor = cfg?.neonColor ?? props.defaultNeonColor;
+
+        const min = cfg?.minFlickers ?? props.defaultMinFlickers;
+        const max = Math.max(min, cfg?.maxFlickers ?? props.defaultMaxFlickers);
+        const flickerCount = random ? Math.floor(Math.random() * (max - min + 1)) + min : min + (i % (max - min + 1));
+
+        const base = cfg?.interval ?? props.defaultInterval;
+        const duration = random ? base * (0.5 + Math.random() * 1.2) : base * (0.7 + (i % 7) * 0.1);
+
+        return { neonColor, flickerCount, duration, speed: cfg?.speed ?? props.defaultSpeed, name: `lnc-${uid}-${i}` };
+    });
+}
+
+const DOT_START = 78;
+const DOT_END = 97;
+const DOT_RANGE = DOT_END - DOT_START;
+const REST_END = DOT_START - 3;
+const SPARK = DOT_START - 1;
+
+function buildKeyframe(f: Frozen): string {
+    const nc = f.neonColor;
+    const step = DOT_RANGE / f.flickerCount;
+    const onRatio = Math.min(0.85, Math.max(0.15, 0.5 / Math.max(0.1, f.speed)));
+    const glowOn = `drop-shadow(0 0 2px ${nc}) drop-shadow(0 0 7px ${nc})`;
+    const sparkGlow = `drop-shadow(0 0 4px ${nc}) brightness(1.15)`;
+
+    let stops = '';
+
+    for (let i = 0; i < f.flickerCount; i++) {
+        const onAt = parseFloat((DOT_START + i * step).toFixed(2));
+        const offAt = parseFloat((onAt + onRatio * step).toFixed(2));
+        const snapAt = parseFloat((offAt + 0.05).toFixed(2));
+        stops += `    ${onAt}%  { color: transparent; -webkit-text-stroke: 1.5px ${nc}; filter: ${glowOn}; }\n`;
+        stops += `    ${offAt}% { color: transparent; -webkit-text-stroke: 1.5px ${nc}; filter: ${glowOn}; }\n`;
+        stops += `    ${snapAt}% { color: transparent; -webkit-text-stroke: 0.5px ${nc}; filter: none; }\n`;
+    }
+
+    stops += `    ${parseFloat((DOT_END - 0.1).toFixed(2))}% { color: transparent; -webkit-text-stroke: 1.5px ${nc}; filter: ${glowOn}; }\n`;
+
+    return `@keyframes ${f.name} {
+    0%, ${REST_END}%  { color: inherit; -webkit-text-stroke-width: 0; filter: none; }
+    ${SPARK}%    { color: ${nc}; -webkit-text-stroke-width: 0; filter: ${sparkGlow}; }
+    ${DOT_START}%   { color: ${nc}; -webkit-text-stroke-width: 0; filter: ${glowOn}; }
+    ${DOT_START + 0.05}% { color: transparent; -webkit-text-stroke: 1.5px ${nc}; filter: ${glowOn}; }
+${stops}    ${DOT_END}%   { color: ${nc}; -webkit-text-stroke-width: 0; filter: ${sparkGlow}; }
+    ${DOT_END + 3}%      { color: ${nc}; -webkit-text-stroke-width: 0; filter: drop-shadow(0 0 2px ${nc}); }
+    100%     { color: inherit; -webkit-text-stroke-width: 0; filter: none; }
+}`;
+}
+
+let styleEl: HTMLStyleElement | null = null;
+
+function injectStyles(): void {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.setAttribute('data-neon-uid', uid);
+        document.head.appendChild(styleEl);
+    }
+
+    styleEl.textContent = frozen.value.map((f) => buildKeyframe(f)).join('\n');
+}
+
+initFrozen(false);
+
+onMounted(() => {
+    initFrozen(true);
+    injectStyles();
+});
+
+onBeforeUnmount(() => {
+    styleEl?.remove();
+    styleEl = null;
+});
+
+const chars = computed(() =>
+    [...props.text].map((char, i) => {
+        const f = frozen.value[i];
+        const delay = ((i * 1.618034) % props.spread).toFixed(2);
+        const t = tiltMap.value.get(char);
+
+        const style: Record<string, string> = {
+            animationName: f.name,
+            animationDuration: `${f.duration.toFixed(2)}s`,
+            animationDelay: `-${delay}s`,
+            animationIterationCount: 'infinite',
+            animationTimingFunction: 'linear',
+            backgroundImage: `radial-gradient(circle, ${f.neonColor} 1.5px, transparent 1.5px)`,
         };
+
+        if (t) {
+            if (t.angle != null || t.scale != null) {
+                const r = t.angle != null ? `rotate(${t.angle}deg)` : '';
+                const s = t.scale != null ? `scale(${t.scale})` : '';
+                style.transform = [r, s].filter(Boolean).join(' ');
+            }
+
+            if (t.top != null) {
+                style.top = t.top;
+            }
+
+            if (t.bottom != null) {
+                style.bottom = t.bottom;
+            }
+
+            if (t.left != null) {
+                style.left = t.left;
+            }
+
+            if (t.right != null) {
+                style.right = t.right;
+            }
+        }
+
+        return { char: char === ' ' ? '\u00a0' : char, style };
     }),
 );
-
-function charStyle(c: CharData): Record<string, string> {
-    const style: Record<string, string> = {
-        animationDelay: c.delay,
-        animationDuration: c.duration,
-    };
-
-    if (c.transform === null) {
-        return style;
-    }
-
-    style.display = 'inline-block';
-    style.position = 'relative';
-
-    if (c.transform.angle !== null || c.transform.scale !== null) {
-        const rotate = c.transform.angle !== null ? `rotate(${c.transform.angle}deg)` : '';
-        const scale = c.transform.scale !== null ? `scale(${c.transform.scale})` : '';
-        style.transform = [rotate, scale].filter(Boolean).join(' ');
-    }
-
-    if (c.transform.top !== null) {
-        style.top = c.transform.top;
-    }
-
-    if (c.transform.bottom !== null) {
-        style.bottom = c.transform.bottom;
-    }
-
-    if (c.transform.left !== null) {
-        style.left = c.transform.left;
-    }
-
-    if (c.transform.right !== null) {
-        style.right = c.transform.right;
-    }
-
-    return style;
-}
 </script>
 
 <template>
-    <span class="limbo-neon-text" :aria-label="text">
-        <span
-            v-for="(c, i) in chars"
-            :key="i"
-            class="limbo-char-blink"
-            :style="charStyle(c)"
-            aria-hidden="true"
-            >{{ c.char }}</span
-        >
-    </span>
+    <component :is="tag" class="neon-text-root" v-bind="$attrs" :aria-label="text">
+        <span v-for="(c, i) in chars" :key="i" class="neon-char" :style="c.style" aria-hidden="true">{{ c.char }}</span>
+    </component>
 </template>
 
 <style scoped>
-/**
- * Per-character neon blink.
- * Each span gets unique animation-delay / animation-duration via inline style.
- *
- * How it works:
- *  1. Resting  — filled text sits on top of the dotted bg (invisible dots)
- *  2. Spark    — tight drop-shadows burst from the character
- *  3. Outline  — color → transparent reveals dotted fill; stroke draws hollow outline
- *  4. Flash    — bright snap before returning to normal
- */
-.limbo-char-blink {
-    display: inline-block; /* required for background-clip: text */
-    position: relative;
+.neon-text-root {
     font-family: var(--font-neon);
-    /* Ensure descenders (g, y, p, j) are fully inside the element box */
-    line-height: 1.3;
-    padding-bottom: 0.15em;
+    color: v-bind(color);
+}
 
-    /* Dotted fill — offset origin centres the grid on the glyph body */
-    background-image: radial-gradient(circle, var(--color-neon) 1.5px, transparent 1.5px);
+.neon-char {
+    display: inline-block;
+    position: relative;
+    line-height: 1.3;
+    padding-bottom: 0.1em;
     background-size: 4px 4px;
     background-position: 2px 2px;
     -webkit-background-clip: text;
     background-clip: text;
-
-    animation: limbo-char-blink 5s ease-in-out infinite both;
-}
-
-@keyframes limbo-char-blink {
-    /* Resting: filled text covers the dotted background */
-    0%,
-    62%,
-    100% {
-        color: inherit;
-        -webkit-text-stroke-width: 0;
-        filter: none;
-    }
-
-    /* Spark: tight bright burst */
-    70% {
-        color: var(--color-neon);
-        -webkit-text-stroke-width: 0;
-        filter:
-            drop-shadow(0 0 3px var(--color-neon))
-            drop-shadow(0 0 8px var(--color-neon))
-            brightness(1.4);
-    }
-
-    /* Outline + dotted fill revealed */
-    76%,
-    90% {
-        color: transparent;
-        -webkit-text-stroke: 1.5px var(--color-neon);
-        filter: drop-shadow(0 0 4px var(--color-neon-glow));
-    }
-
-    /* Flicker mid-outline */
-    83% {
-        color: transparent;
-        -webkit-text-stroke: 1px var(--color-neon);
-        filter: none;
-    }
-
-    /* Snap back: bright flash */
-    95% {
-        color: var(--color-neon);
-        -webkit-text-stroke-width: 0;
-        filter: drop-shadow(0 0 6px var(--color-neon));
-    }
 }
 </style>

@@ -26,9 +26,9 @@
     --color-theme-active: hsl(0 84% 38%);
     --color-theme-glow: hsl(0 84% 50% / 0.4);
 
-    /* Neon accent — electric cyan, classic neon-tube aesthetic */
-    --color-neon: hsl(190 100% 65%);
-    --color-neon-glow: hsl(190 100% 65% / 0.45);
+    /* Neon accent — electric red, neon-tube aesthetic */
+    --color-neon: hsl(348 100% 55%);
+    --color-neon-glow: hsl(348 100% 55% / 0.4);
 
     /* Neon display font — Bungee (heavy inline display, strong vertical strokes) */
     --font-neon: 'Bungee', ui-sans-serif, system-ui, sans-serif;

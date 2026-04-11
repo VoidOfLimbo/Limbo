@@ -19,7 +19,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import BounceWrapper from '@/components/BounceWrapper.vue';
 import DynamicFloatingMenu from '@/components/DynamicFloatingMenu.vue';
 import GlitchText from '@/components/GlitchText.vue';
-import NeonHeader from '@/components/NeonHeader.vue';
+import NeonText from '@/components/NeonText.vue';
 import ScrambleText from '@/components/ScrambleText.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Badge } from '@/components/ui/badge';
@@ -153,15 +153,15 @@ const features = [
         </header>
 
         <!-- DynamicFloatingMenu -->
-        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="right" alignment="center"
+        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="bottom" alignment="center"
             :collapsible="true" @select="scrollToSection" />
 
         <!-- Hero -->
         <section id="hero"
             class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
-                <NeonHeader text="VoidOfLimbo" tag="p" class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
-                    :spread="12" :base-duration="7" :tilt="[{ chars: 'L', angle: 18, top: '6px' }]" />
+                <NeonText text="VoidOfLimbo" tag="p" class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
+                    default-neon-color="#aa00ff" :tilt="[{ chars: 'L', angle: 18, top: '6px' }]" />
 
                 <ScrambleText :texts="['By the', 'For the', 'Of the']" tag="span"
                     class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
