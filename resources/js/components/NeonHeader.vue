@@ -75,9 +75,9 @@ const animDuration = computed(() => `${props.flickerDuration}s`);
     100% {
         color: v-bind(color);
         text-shadow:
-            0 0 10px v-bind(glowColor),
-            0 0 30px v-bind(glowColor),
-            0 0 60px v-bind(glowColor);
+            0 0 4px v-bind(glowColor),
+            0 0 12px v-bind(glowColor),
+            0 0 24px v-bind(glowColor);
     }
 
     /* ── Flicker off ── */
@@ -91,7 +91,7 @@ const animDuration = computed(() => `${props.flickerDuration}s`);
     /* ── Half-off flicker ── */
     22% {
         color: color-mix(in srgb, v-bind(color) 85%, transparent);
-        text-shadow: 0 0 5px color-mix(in srgb, v-bind(color) 50%, transparent);
+        text-shadow: 0 0 3px color-mix(in srgb, v-bind(color) 50%, transparent);
     }
 }
 </style>

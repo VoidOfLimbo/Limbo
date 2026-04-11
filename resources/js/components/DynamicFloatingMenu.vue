@@ -35,31 +35,8 @@ const emit = defineEmits<{
 
 const hoveredItem = ref<string | null>(null);
 
-function itemZoom(index: number): number {
-    if (hoveredItem.value === null) {
-        return 1;
-    }
-
-    const hi = props.items.findIndex((s) => s.id === hoveredItem.value);
-
-    if (hi === -1) {
-        return 1;
-    }
-
-    if (index === hi) {
-        return 1.6;
-    }
-
-    if (Math.abs(index - hi) === 1) {
-        return 1.25;
-    }
-
-    return 1;
-}
-
 const isVertical = computed(() => props.position === 'left' || props.position === 'right');
 
-// Which edge to attach to + rounded corners on the open side
 const edgeClasses: Record<Position, string> = {
     right: 'right-0 rounded-l-2xl',
     left: 'left-0 rounded-r-2xl',
@@ -67,7 +44,6 @@ const edgeClasses: Record<Position, string> = {
     bottom: 'bottom-0 rounded-t-2xl',
 };
 
-// Alignment along the perpendicular axis
 const alignClasses: Record<'vertical' | 'horizontal', Record<Align, string>> = {
     vertical: {
         start: 'top-4',
@@ -91,53 +67,78 @@ const positionClasses = computed(() => {
 
 const flexDirectionClass = computed(() => (isVertical.value ? 'flex-col' : 'flex-row'));
 
-// Icon scale grows away from the edge (into the page)
-// zoom on the wrapper is layout-affecting — siblings get pushed apart instead of overlapping
-function itemStyle(index: number): Record<string, string> {
-    const z = itemZoom(index);
-
-    return { zoom: String(z) };
-}
+// Icon grows away from the edge it's attached to
+const scaleOrigins: Record<Position, string> = {
+    right: 'right center',
+    left: 'left center',
+    top: 'center top',
+    bottom: 'center bottom',
+};
 
 // Tooltip appears on the opposite side from the edge
 const tooltipClasses: Record<Position, string> = {
-    right: 'right-[calc(100%+24px)] top-1/2 -translate-y-1/2',
-    left: 'left-[calc(100%+24px)] top-1/2 -translate-y-1/2',
-    top: 'top-[calc(100%+20px)] left-1/2 -translate-x-1/2',
-    bottom: 'bottom-[calc(100%+20px)] left-1/2 -translate-x-1/2',
+    right: 'right-[calc(100%+14px)] top-1/2 -translate-y-1/2',
+    left: 'left-[calc(100%+14px)] top-1/2 -translate-y-1/2',
+    top: 'top-[calc(100%+10px)] left-1/2 -translate-x-1/2',
+    bottom: 'bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2',
 };
+
+// When the icon scales 1.5× from an edge origin, its far edge (facing the tooltip)
+// moves by (scale - 1) × size = 0.5 × 44 = 22px. Push the tooltip the same distance
+// so the visual gap stays constant. Direction is always away from the dock edge.
+const SCALE = 1.5;
+const ICON_SIZE = 44; // size-11 in px
+const tooltipShiftPx = (SCALE - 1) * ICON_SIZE; // 22px
+
+const tooltipShiftMap: Record<Position, string> = {
+    right: `translateX(-${tooltipShiftPx}px)`,
+    left: `translateX(${tooltipShiftPx}px)`,
+    top: `translateY(${tooltipShiftPx}px)`,
+    bottom: `translateY(-${tooltipShiftPx}px)`,
+};
+
+function tooltipStyle(itemId: string): Record<string, string> {
+    const isHovered = hoveredItem.value === itemId;
+
+    return {
+        transform: isHovered ? tooltipShiftMap[props.position] : 'none',
+        transition: 'transform 300ms, opacity 150ms',
+    };
+}
 </script>
 
 <template>
     <nav
         :class="[
-            'fixed z-40 hidden items-center gap-3 overflow-visible border border-white/10 bg-[rgba(83,83,83,0.4)] p-3 shadow-2xl shadow-black/20 backdrop-blur-[50px] lg:flex',
+            'fixed z-40 hidden items-end gap-1 overflow-visible border border-white/10 bg-[rgba(83,83,83,0.4)] p-3 shadow-2xl shadow-black/20 backdrop-blur-[50px] lg:flex',
             positionClasses,
             flexDirectionClass,
             collapsible ? 'opacity-10 transition-opacity duration-300 hover:opacity-100' : '',
         ]"
     >
         <div
-            v-for="(item, index) in items"
+            v-for="item in items"
             :key="item.id"
-            class="group relative size-11 transition-[zoom] duration-200"
-            :style="itemStyle(index)"
+            class="group relative transition-[margin] duration-300"
+            :class="isVertical ? 'hover:my-2' : 'hover:mx-2'"
             @mouseenter="hoveredItem = item.id"
             @mouseleave="hoveredItem = null"
         >
-            <!-- Tooltip: anchored to the unscaled wrapper so it never shifts with zoom -->
+            <!-- Tooltip -->
             <span
                 :class="[
-                    'pointer-events-none absolute z-10 whitespace-nowrap rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm transition-opacity duration-150 group-hover:opacity-100',
+                    'pointer-events-none absolute z-10 whitespace-nowrap rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm group-hover:opacity-100',
                     tooltipClasses[position],
                 ]"
+                :style="tooltipStyle(item.id)"
             >
                 {{ item.label }}
             </span>
 
             <button
+                :style="{ transformOrigin: scaleOrigins[position] }"
                 :class="[
-                    'flex size-11 cursor-pointer items-center justify-center rounded-xl transition-[color,background-color,box-shadow] duration-200',
+                    'dock-btn flex size-11 cursor-pointer items-center justify-center rounded-xl transition-[color,background-color,box-shadow,transform] duration-300',
                     activeItem === item.id
                         ? 'bg-primary/20 text-primary shadow-[0_0_14px_2px] shadow-primary/30'
                         : 'text-white/60 hover:bg-white/10 hover:text-white',
@@ -149,3 +150,9 @@ const tooltipClasses: Record<Position, string> = {
         </div>
     </nav>
 </template>
+
+<style scoped>
+.dock-btn:hover {
+    transform: scale(1.5);
+}
+</style>

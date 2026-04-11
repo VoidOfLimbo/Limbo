@@ -125,74 +125,7 @@ const features = [
 
     <Head title="Welcome to VoidOfLimbo" />
 
-    <div class="relative min-h-screen text-foreground">
-        <!-- Techy SVG background -->
-        <div class="fixed inset-0 -z-10 bg-background">
-            <svg class="absolute inset-0 h-full w-full" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <defs>
-                    <!-- Small grid -->
-                    <pattern id="grid-sm" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.3"
-                            class="text-foreground/[0.05]" />
-                    </pattern>
-                    <!-- Large grid -->
-                    <pattern id="grid-lg" width="160" height="160" patternUnits="userSpaceOnUse">
-                        <path d="M 160 0 L 0 0 0 160" fill="none" stroke="currentColor" stroke-width="0.7"
-                            class="text-foreground/[0.08]" />
-                    </pattern>
-                    <!-- Radial glow top-left -->
-                    <radialGradient id="g1" cx="15%" cy="15%" r="55%">
-                        <stop offset="0%" stop-color="hsl(var(--primary))" stop-opacity="0.14" />
-                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
-                    </radialGradient>
-                    <!-- Radial glow bottom-right -->
-                    <radialGradient id="g2" cx="85%" cy="75%" r="50%">
-                        <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.11" />
-                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
-                    </radialGradient>
-                    <!-- Radial glow center -->
-                    <radialGradient id="g3" cx="50%" cy="50%" r="40%">
-                        <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.06" />
-                        <stop offset="100%" stop-color="transparent" stop-opacity="0" />
-                    </radialGradient>
-                </defs>
-
-                <!-- Grid layers -->
-                <rect width="100%" height="100%" fill="url(#grid-sm)" />
-                <rect width="100%" height="100%" fill="url(#grid-lg)" />
-
-                <!-- Glow washes -->
-                <rect width="100%" height="100%" fill="url(#g1)" />
-                <rect width="100%" height="100%" fill="url(#g2)" />
-                <rect width="100%" height="100%" fill="url(#g3)" />
-
-                <!-- Circuit traces: top-left cluster -->
-                <g fill="none" stroke="hsl(var(--primary))" stroke-opacity="0.2" stroke-width="1.2">
-                    <polyline points="0,120 80,120 80,60 200,60" class="trace" />
-                    <polyline points="80,0 80,60" class="trace" />
-                    <circle cx="80" cy="60" r="3" fill="hsl(var(--primary))" fill-opacity="0.4" class="node" />
-                    <circle cx="200" cy="60" r="2" fill="hsl(var(--primary))" fill-opacity="0.3" />
-                    <circle cx="80" cy="120" r="2" fill="hsl(var(--primary))" fill-opacity="0.3" />
-                </g>
-
-                <!-- Circuit traces: right cluster -->
-                <g fill="none" stroke="#8b5cf6" stroke-opacity="0.18" stroke-width="1.2">
-                    <polyline points="100%,180 calc(100% - 60px),180 calc(100% - 60px),100 calc(100% - 220px),100"
-                        class="trace trace-alt" />
-                    <circle r="3" fill="#8b5cf6" fill-opacity="0.4" class="node"
-                        style="cx: calc(100% - 60px); cy: 180px" />
-                    <circle r="2" fill="#8b5cf6" fill-opacity="0.3" style="cx: calc(100% - 60px); cy: 100px" />
-                </g>
-
-                <!-- Circuit traces: bottom cluster -->
-                <g fill="none" stroke="#06b6d4" stroke-opacity="0.14" stroke-width="1">
-                    <polyline points="0,80% 120,80% 120,75% 320,75%" class="trace trace-slow" />
-                    <polyline points="120,80% 120,100%" class="trace trace-slow" />
-                    <circle cx="120" r="2.5" fill="#06b6d4" fill-opacity="0.35" class="node" style="cy: 80%" />
-                </g>
-            </svg>
-        </div>
-
+    <div class="relative min-h-screen bg-background text-foreground">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
@@ -220,7 +153,7 @@ const features = [
         </header>
 
         <!-- DynamicFloatingMenu -->
-        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="bottom" alignment="center"
+        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="right" alignment="center"
             :collapsible="true" @select="scrollToSection" />
 
         <!-- Hero -->
@@ -342,51 +275,3 @@ const features = [
         </footer>
     </div>
 </template>
-
-<style scoped>
-@keyframes node-pulse {
-
-    0%,
-    100% {
-        opacity: 0.4;
-        r: 3;
-    }
-
-    50% {
-        opacity: 1;
-        r: 5;
-    }
-}
-
-@keyframes trace-flow {
-    0% {
-        stroke-dashoffset: 600;
-    }
-
-    100% {
-        stroke-dashoffset: 0;
-    }
-}
-
-.node {
-    animation: node-pulse 3s ease-in-out infinite;
-}
-
-.trace {
-    stroke-dasharray: 600;
-    stroke-dashoffset: 600;
-    animation: trace-flow 6s ease-in-out infinite;
-}
-
-.trace-alt {
-    animation-delay: 2s;
-    animation-duration: 8s;
-}
-
-.trace-slow {
-    animation-delay: 4s;
-    animation-duration: 10s;
-}
-
-/* keep old drift keyframes compat in case of hot reload remnants */
-</style>

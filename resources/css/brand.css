@@ -12,10 +12,10 @@
  */
 
 /*
- * Neon font: Orbitron (primary) + Exo 2 (fallback)
- * Weights 700–900 only — display faces, swap during load.
+ * Neon font: Bungee
+ * Heavy inline display face with strong vertical strokes — great for neon glow.
+ * Note: @import is hoisted to app.css to satisfy PostCSS ordering rules.
  */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Exo+2:wght@700;800;900&display=swap');
 
 /* ── Brand tokens ────────────────────────────────────────────────────────── */
 
@@ -30,6 +30,6 @@
     --color-neon: hsl(190 100% 65%);
     --color-neon-glow: hsl(190 100% 65% / 0.45);
 
-    /* Neon display font — Orbitron (geometric/techno) + Exo 2 (fallback) */
-    --font-neon: 'Orbitron', 'Exo 2', ui-sans-serif, system-ui, sans-serif;
+    /* Neon display font — Bungee (heavy inline display, strong vertical strokes) */
+    --font-neon: 'Bungee', ui-sans-serif, system-ui, sans-serif;
 }
