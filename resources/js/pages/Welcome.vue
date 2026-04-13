@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import {
+    AnchorIcon,
     BlocksIcon,
     CalendarIcon,
     ChevronDownIcon,
@@ -39,13 +40,62 @@ const navSections = [
     { id: 'hero', label: 'Home', icon: HomeIcon },
     { id: 'features', label: 'Features', icon: LayoutDashboardIcon },
     { id: 'cta', label: 'Join', icon: RocketIcon },
+    { id: 'footer', label: 'About', icon: AnchorIcon },
 ];
 
+const containerRef = ref<HTMLDivElement | null>(null);
 const activeSection = ref('hero');
 const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
 
 function scrollToSection(id: string): void {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const el = document.getElementById(id);
+    const container = containerRef.value;
+
+    if (!el || !container) {
+        return;
+    }
+
+    activeSection.value = id;
+    const scrollPadding = parseInt(getComputedStyle(container).scrollPaddingTop) || 0;
+    container.scrollTo({ top: el.offsetTop - scrollPadding, behavior: 'smooth' });
+}
+
+function handleKeyDown(e: KeyboardEvent): void {
+    const tag = (e.target as HTMLElement)?.tagName;
+
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        return;
+    }
+
+    const idx = navSections.findIndex((s) => s.id === activeSection.value);
+
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        e.preventDefault();
+        const next = navSections[idx + 1];
+
+        if (next) {
+            scrollToSection(next.id);
+        }
+    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        const prev = navSections[idx - 1];
+
+        if (prev) {
+            scrollToSection(prev.id);
+        }
+    }
+}
+
+function handleScroll(): void {
+    const el = containerRef.value;
+
+    if (!el) {
+        return;
+    }
+
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
+        activeSection.value = 'footer';
+    }
 }
 
 let sectionObserver: IntersectionObserver | null = null;
@@ -62,17 +112,22 @@ onMounted(() => {
         { rootMargin: '-45% 0px -45% 0px', threshold: 0 },
     );
 
-    navSections.forEach(({ id }) => {
+    navSections.slice(0, -1).forEach(({ id }) => {
         const el = document.getElementById(id);
 
         if (el) {
             sectionObserver!.observe(el);
         }
     });
+
+    document.addEventListener('keydown', handleKeyDown);
+    containerRef.value?.addEventListener('scroll', handleScroll);
 });
 
 onBeforeUnmount(() => {
     sectionObserver?.disconnect();
+    document.removeEventListener('keydown', handleKeyDown);
+    containerRef.value?.removeEventListener('scroll', handleScroll);
 });
 
 const features = [
@@ -125,7 +180,7 @@ const features = [
 
     <Head title="Welcome to VoidOfLimbo" />
 
-    <div class="relative min-h-screen bg-background text-foreground">
+    <div ref="containerRef" class="relative h-screen overflow-y-scroll snap-y snap-mandatory scroll-pt-16 bg-background text-foreground">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
@@ -145,7 +200,7 @@ const features = [
                     </template>
                     <template v-else>
                         <Link :href="login()">
-                            <Button size="sm">Join Now</Button>
+                            <Button size="sm">Enter World</Button>
                         </Link>
                     </template>
                 </nav>
@@ -153,12 +208,12 @@ const features = [
         </header>
 
         <!-- DynamicFloatingMenu -->
-        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="bottom" alignment="center"
+        <DynamicFloatingMenu :items="navSections" :active-item="activeSection" position="right" alignment="center"
             :collapsible="true" @select="scrollToSection" />
 
         <!-- Hero -->
         <section id="hero"
-            class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
+            class="relative flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center overflow-hidden">
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
                 <NeonText text="VoidOfLimbo" tag="p" class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
                     default-neon-color="#aa00ff" :tilt="[{ chars: 'L', angle: 18, top: '6px' }]" />
@@ -199,7 +254,7 @@ const features = [
         </section>
 
         <!-- Features -->
-        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center relative">
+        <section id="features" class="flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center relative">
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
@@ -230,7 +285,7 @@ const features = [
 
         <!-- CTA -->
         <section id="cta"
-            class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
+            class="flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center px-6 py-24 text-center">
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join VoidOfLimbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
@@ -252,7 +307,7 @@ const features = [
         </section>
 
         <!-- Footer -->
-        <footer class="border-t border-border/40 bg-background/70 backdrop-blur-sm">
+        <footer id="footer" class="scroll-mt-16 snap-start border-t border-border/40 bg-background/70 backdrop-blur-sm">
             <div class="mx-auto flex flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
                 <div class="flex items-center gap-2">
                     <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">
@@ -268,7 +323,7 @@ const features = [
                     reserved.</p>
                 <div class="flex items-center gap-4">
                     <Link :href="privacyPolicy()"
-                        class="text-xs text-muted-foreground transition-colors hover:text-foreground">
+                        class="text-xs text-muted-foreground underline transition-colors hover:text-foreground">
                         Privacy Policy</Link>
                 </div>
             </div>

@@ -44,7 +44,7 @@ export type CharFlicker = {
 </script>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue';
 
 const props = withDefaults(
     defineProps<{
@@ -83,7 +83,7 @@ const props = withDefaults(
 
 defineOptions({ inheritAttrs: false });
 
-const uid = Math.random().toString(36).slice(2, 8);
+const uid = useId().replace(/[^a-z0-9-]/gi, '-');
 
 const tiltMap = computed<Map<string, TiltGroup>>(() => {
     const map = new Map<string, TiltGroup>();
