@@ -127,7 +127,7 @@ function tooltipStyle(itemId: string): Record<string, string> {
             <!-- Tooltip -->
             <span
                 :class="[
-                    'pointer-events-none absolute z-10 whitespace-nowrap rounded-lg bg-black/70 px-3 py-1.5 text-xs font-medium text-white opacity-0 backdrop-blur-sm group-hover:opacity-100',
+                    'pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-background/20 bg-foreground px-3 py-1.5 text-xs text-background opacity-0 group-hover:opacity-100',
                     tooltipClasses[position],
                 ]"
                 :style="tooltipStyle(item.id)"

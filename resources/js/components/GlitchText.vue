@@ -17,7 +17,6 @@ export type GlitchName =
     | 'tear'           // Horizontal tear with clip-path slice
     | 'blur-burst'     // Heavy blur burst then sharp snap
     | 'invert'         // Repeated colour invert flash
-    | 'neon-pulse'     // Cyan/magenta neon pulse + scale burst
     | 'mega-tear'      // Wide horizontal mega tear
     | 'scale-distort'  // Compress then stretch scale distortion
     | 'ghost'          // Ghost double image (rgba shadows)
@@ -30,7 +29,6 @@ export const GLITCH_DURATIONS: Record<GlitchName, number> = {
     'tear':          600,
     'blur-burst':    750,
     'invert':        500,
-    'neon-pulse':    800,
     'mega-tear':     600,
     'scale-distort': 700,
     'ghost':         650,
@@ -48,11 +46,11 @@ defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
     defineProps<{
-        /** Text to display. Also set as `data-text` for CSS pseudo-element use. */
-        text: string;
+        /** Array of texts to cycle through. Each glitch trigger advances to the next. */
+        texts: string[];
         /**
          * Whitelist of variants to sample from.
-         * When omitted, all 10 are available.
+         * When omitted, all are available.
          * Evaluated before `exclude`.
          */
         include?: GlitchName[];
@@ -85,6 +83,8 @@ const pool = computed<GlitchName[]>(() => {
 });
 
 const activeVariant = ref<GlitchName | null>(null);
+const currentIndex = ref(0);
+const currentText = computed(() => props.texts[currentIndex.value] ?? '');
 
 /** Trigger a random glitch from the resolved pool. Call via template ref. */
 function trigger(): void {
@@ -93,6 +93,7 @@ function trigger(): void {
     }
 
     activeVariant.value = null;
+    currentIndex.value = (currentIndex.value + 1) % props.texts.length;
 
     requestAnimationFrame(() => {
         const picked = pool.value[Math.floor(Math.random() * pool.value.length)];
@@ -111,9 +112,9 @@ defineExpose({ trigger, pool });
     <component
         :is="tag"
         :class="['glitch-root', activeVariant ? `glitch-${activeVariant}` : '']"
-        :data-text="text"
+        :data-text="currentText"
         v-bind="$attrs"
-    >{{ text }}</component>
+    >{{ currentText }}</component>
 </template>
 
 <style scoped>
@@ -127,7 +128,6 @@ defineExpose({ trigger, pool });
 .glitch-tear          { animation: glitch-tear          0.60s forwards; }
 .glitch-blur-burst    { animation: glitch-blur-burst    0.75s forwards; }
 .glitch-invert        { animation: glitch-invert        0.50s forwards; }
-.glitch-neon-pulse    { animation: glitch-neon-pulse    0.80s forwards; }
 .glitch-mega-tear     { animation: glitch-mega-tear     0.60s forwards; }
 .glitch-scale-distort { animation: glitch-scale-distort 0.70s forwards; }
 .glitch-ghost         { animation: glitch-ghost         0.65s forwards; }
@@ -182,16 +182,6 @@ defineExpose({ trigger, pool });
     47%       { filter: none; }
     60%       { filter: invert(1) saturate(2); }
     67%       { filter: none; }
-}
-
-/* neon-pulse — Cyan/magenta neon pulse burst */
-@keyframes glitch-neon-pulse {
-    0%, 100% { text-shadow: none; transform: none; }
-    15%       { text-shadow: 0 0 30px #0ff, 0 0 60px #0ff, 0 0 100px #0ff; transform: scale(1.03); }
-    35%       { text-shadow: 0 0 15px #f0f, 0 0 40px #f0f; transform: scale(0.98); }
-    55%       { text-shadow: 0 0 50px #0ff, 0 0 90px #0ff; transform: scale(1.02); }
-    75%       { text-shadow: 0 0 10px #0ff; transform: none; }
-    90%       { text-shadow: none; }
 }
 
 /* mega-tear — Wide horizontal mega tear */

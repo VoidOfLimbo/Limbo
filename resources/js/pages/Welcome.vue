@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import {
-    AnchorIcon,
     BlocksIcon,
     CalendarIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    CompassIcon,
     HomeIcon,
     LayoutDashboardIcon,
     RocketIcon,
@@ -40,7 +40,7 @@ const navSections = [
     { id: 'hero', label: 'Home', icon: HomeIcon },
     { id: 'features', label: 'Features', icon: LayoutDashboardIcon },
     { id: 'cta', label: 'Join', icon: RocketIcon },
-    { id: 'footer', label: 'About', icon: AnchorIcon },
+    { id: 'footer', label: 'About', icon: CompassIcon },
 ];
 
 const containerRef = ref<HTMLDivElement | null>(null);
@@ -178,7 +178,7 @@ const features = [
 
 <template>
 
-    <Head title="Welcome to VoidOfLimbo" />
+    <Head title="How did we get here?" />
 
     <div ref="containerRef" class="relative h-screen overflow-y-scroll snap-y snap-mandatory scroll-pt-16 bg-background text-foreground">
         <!-- Nav -->
@@ -200,7 +200,7 @@ const features = [
                     </template>
                     <template v-else>
                         <Link :href="login()">
-                            <Button size="sm">Enter World</Button>
+                            <Button size="sm">Enter VoidOfLimbo</Button>
                         </Link>
                     </template>
                 </nav>
@@ -222,7 +222,7 @@ const features = [
                     class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
                     @change="glitchRef?.trigger()" />
 
-                <GlitchText ref="glitchRef" text="Developer" tag="span"
+                <GlitchText ref="glitchRef" :texts="['Developer', 'Creator', 'Visionary']" tag="span"
                     class="text-6xl font-extrabold tracking-tight lg:text-8xl" />
 
                 <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
@@ -232,7 +232,7 @@ const features = [
                 <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
                     <Link v-if="canRegister" :href="register()">
                         <Button size="lg" class="h-12 gap-2 px-8 text-base">
-                            Create Free Account
+                            Enter VoidOfLimbo
                             <ChevronRightIcon class="size-4" />
                         </Button>
                     </Link>
@@ -245,8 +245,7 @@ const features = [
                 </div>
 
                 <div class="mt-10 flex flex-col items-center gap-2">
-                    <p class="text-xs italic text-muted-foreground">scroll down to see more</p>
-                    <BounceWrapper direction="down" distance="7px" :duration="2">
+                    <BounceWrapper direction="down" distance="30px" :duration="1.5">
                         <ChevronDownIcon class="size-8 text-muted-foreground" />
                     </BounceWrapper>
                 </div>
