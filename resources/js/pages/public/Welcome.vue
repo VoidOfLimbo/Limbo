@@ -47,17 +47,57 @@ const containerRef = ref<HTMLDivElement | null>(null);
 const activeSection = ref('hero');
 const glitchRef = ref<InstanceType<typeof GlitchText> | null>(null);
 
+// Prevents concurrent scroll animations from stacking on top of each other.
+const isScrolling = ref(false);
+
 function scrollToSection(id: string): void {
     const el = document.getElementById(id);
     const container = containerRef.value;
 
-    if (!el || !container) {
+    if (!el || !container || isScrolling.value) {
         return;
     }
 
     activeSection.value = id;
+    isScrolling.value = true;
+
     const scrollPadding = parseInt(getComputedStyle(container).scrollPaddingTop) || 0;
     container.scrollTo({ top: el.offsetTop - scrollPadding, behavior: 'smooth' });
+
+    // Release the lock once the smooth scroll finishes.
+    // scrollend is supported in modern browsers; fall back to a timeout.
+    const done = () => {
+        isScrolling.value = false;
+        container.removeEventListener('scrollend', done);
+    };
+
+    if ('onscrollend' in container) {
+        container.addEventListener('scrollend', done, { once: true });
+    } else {
+        setTimeout(done, 800);
+    }
+}
+
+// Intercept wheel events so mouse scrolling uses the same JS path as keyboard nav,
+// eliminating the CSS-snap vs smooth-scroll conflict.
+function handleWheel(e: WheelEvent): void {
+    e.preventDefault();
+
+    const idx = navSections.findIndex((s) => s.id === activeSection.value);
+
+    if (e.deltaY > 0) {
+        const next = navSections[idx + 1];
+
+        if (next) {
+            scrollToSection(next.id);
+        }
+    } else if (e.deltaY < 0) {
+        const prev = navSections[idx - 1];
+
+        if (prev) {
+            scrollToSection(prev.id);
+        }
+    }
 }
 
 function handleKeyDown(e: KeyboardEvent): void {
@@ -86,25 +126,14 @@ function handleKeyDown(e: KeyboardEvent): void {
     }
 }
 
-function handleScroll(): void {
-    const el = containerRef.value;
-
-    if (!el) {
-        return;
-    }
-
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) {
-        activeSection.value = 'footer';
-    }
-}
-
 let sectionObserver: IntersectionObserver | null = null;
 
 onMounted(() => {
     sectionObserver = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
-                if (entry.isIntersecting) {
+                // Don't override activeSection mid-programmatic scroll — let scrollToSection own it.
+                if (entry.isIntersecting && !isScrolling.value) {
                     activeSection.value = entry.target.id;
                 }
             });
@@ -121,13 +150,14 @@ onMounted(() => {
     });
 
     document.addEventListener('keydown', handleKeyDown);
-    containerRef.value?.addEventListener('scroll', handleScroll);
+    // passive: false is required to allow preventDefault() on wheel.
+    containerRef.value?.addEventListener('wheel', handleWheel, { passive: false });
 });
 
 onBeforeUnmount(() => {
     sectionObserver?.disconnect();
     document.removeEventListener('keydown', handleKeyDown);
-    containerRef.value?.removeEventListener('scroll', handleScroll);
+    containerRef.value?.removeEventListener('wheel', handleWheel);
 });
 
 const features = [
@@ -180,7 +210,7 @@ const features = [
 
     <Head title="How did we get here?" />
 
-    <div ref="containerRef" class="relative h-screen overflow-y-scroll snap-y snap-mandatory scroll-pt-16 bg-background text-foreground">
+    <div ref="containerRef" class="relative h-screen overflow-y-scroll scroll-pt-16 bg-background text-foreground">
         <!-- Nav -->
         <header class="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-sm">
             <div class="mx-auto flex h-16 items-center justify-between px-6">
@@ -213,10 +243,10 @@ const features = [
 
         <!-- Hero -->
         <section id="hero"
-            class="relative flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center overflow-hidden">
+            class="relative flex min-h-screen scroll-mt-16 flex-col items-center justify-center overflow-hidden">
             <div class="flex w-full flex-col items-center px-6 py-24 text-center">
                 <NeonText text="VoidOfLimbo" tag="p" class="mb-8 text-6xl font-extrabold tracking-tight lg:text-8xl"
-                    default-neon-color="#aa00ff" :tilt="[{ chars: 'L', angle: 18, top: '6px' }]" />
+                    default-neon-color="#aa00ff" :tilt="[{ chars: 'L', angle: 18, spacing: { top: '6px' } }]" />
 
                 <ScrambleText :texts="['By the', 'For the', 'Of the']" tag="span"
                     class="relative mb-2 flex h-[1.2em] items-center py-2 text-4xl font-bold tracking-tight lg:text-6xl"
@@ -225,8 +255,8 @@ const features = [
                 <GlitchText ref="glitchRef" :texts="['Developer', 'Creator', 'Visionary']" tag="span"
                     class="text-6xl font-extrabold tracking-tight lg:text-8xl" />
 
-                <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg">
-                    Bespoke page, Interesting features, Productivity tools, Integrated community, Nihil
+                <p class="mx-auto mt-14 text-base leading-relaxed text-muted-foreground lg:text-lg" title="Sun, Cosmic Witness, The Supreme Cosmic Absolute, Cosmic Senses, Shiva as the (Blue-Throated One) after drinking cosmic poison">
+                    Baskara, Īkṣaṇā, Parabrahma, Indriya, Nīlakaṇṭha
                 </p>
 
                 <div class="mt-14 flex flex-wrap items-center justify-center gap-4">
@@ -253,7 +283,7 @@ const features = [
         </section>
 
         <!-- Features -->
-        <section id="features" class="flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center relative">
+        <section id="features" class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center relative">
             <div class="w-full px-6 py-24">
                 <div class="mb-20 text-center">
                     <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">
@@ -284,7 +314,7 @@ const features = [
 
         <!-- CTA -->
         <section id="cta"
-            class="flex min-h-screen scroll-mt-16 snap-start flex-col items-center justify-center px-6 py-24 text-center">
+            class="flex min-h-screen scroll-mt-16 flex-col items-center justify-center px-6 py-24 text-center">
             <h2 class="text-3xl font-bold tracking-tight lg:text-4xl">Ready to join VoidOfLimbo?</h2>
             <p class="mx-auto mt-4 text-muted-foreground">
                 Create a free account and explore the platform. Premium features available via subscription.
@@ -306,7 +336,7 @@ const features = [
         </section>
 
         <!-- Footer -->
-        <footer id="footer" class="scroll-mt-16 snap-start border-t border-border/40 bg-background/70 backdrop-blur-sm">
+        <footer id="footer" class="scroll-mt-16 border-t border-border/40 bg-background/70 backdrop-blur-sm">
             <div class="mx-auto flex flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
                 <div class="flex items-center gap-2">
                     <div class="flex items-center justify-center rounded-sm dark:bg-white dark:p-0.5">

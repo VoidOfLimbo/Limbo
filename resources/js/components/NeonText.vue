@@ -11,23 +11,35 @@
     Per-character colour:
         :flicker="[{ chars: 'V', neonColor: '#00ffff' }]"
 
-    Per-character tilt:
-        :tilt="[{ chars: 'L', angle: 18, top: '6px' }]"
+    Per-character tilt (same values for all chars in the group):
+        :tilt="[{ chars: 'L', angle: 18, spacing: { top: '6px' } }]"
+
+    Target by index — 'VoidOfLimbo'[4] is 'O', [5] is 'f':
+        :tilt="[{ chars: [4, 5], angle: -15, top: '-16px' }]"
+
+    Mix index and character:
+        :tilt="[{ chars: ['L', 4], angle: [18, -15], top: ['6px', '-16px'] }]"
+
+    Mixed chars with per-char values — index 4 gets angle -15, index 5 gets angle -20:
+        :tilt="[{ chars: [4, 5], angle: [-15, -20], top: '-16px' }]"
 
     All extra attributes (class, id, aria-*, …) pass through to the root element.
 -->
 <script lang="ts">
 export type TiltGroup = {
-    chars: string | string[];
-    /** Rotation angle in degrees. Positive = clockwise. */
-    angle?: number;
-    /** Scale factor (1 = normal size). */
-    scale?: number;
-    /** Offset from the top edge (e.g. '4px'). */
-    top?: string;
-    bottom?: string;
-    left?: string;
-    right?: string;
+    /** Character(s) or 0-based index/indices in the text string to target. Indices take priority over character names. */
+    chars: string | number | (string | number)[];
+    /** Rotation angle in degrees. Positive = clockwise. Single value applies to all chars; array maps 1-to-1 with chars. */
+    angle?: number | number[];
+    /** Scale factor (1 = normal size). Single value or per-char array. */
+    scale?: number | number[];
+    /** Positional offsets. Each value is a single string or a per-char array. */
+    spacing?: {
+        top?: string | (string | null)[];
+        bottom?: string | (string | null)[];
+        left?: string | (string | null)[];
+        right?: string | (string | null)[];
+    };
 };
 
 export type CharFlicker = {
@@ -85,15 +97,57 @@ defineOptions({ inheritAttrs: false });
 
 const uid = useId().replace(/[^a-z0-9-]/gi, '-');
 
-const tiltMap = computed<Map<string, TiltGroup>>(() => {
-    const map = new Map<string, TiltGroup>();
+type ResolvedTilt = {
+    angle?: number;
+    scale?: number;
+    top?: string;
+    bottom?: string;
+    left?: string;
+    right?: string;
+};
+
+function resolveProps(g: TiltGroup, idx: number): ResolvedTilt {
+    const sp = g.spacing;
+
+    return {
+        angle: Array.isArray(g.angle) ? g.angle[idx] : g.angle,
+        scale: Array.isArray(g.scale) ? g.scale[idx] : g.scale,
+        top: sp ? (Array.isArray(sp.top) ? sp.top[idx] ?? undefined : sp.top) ?? undefined : undefined,
+        bottom: sp ? (Array.isArray(sp.bottom) ? sp.bottom[idx] ?? undefined : sp.bottom) ?? undefined : undefined,
+        left: sp ? (Array.isArray(sp.left) ? sp.left[idx] ?? undefined : sp.left) ?? undefined : undefined,
+        right: sp ? (Array.isArray(sp.right) ? sp.right[idx] ?? undefined : sp.right) ?? undefined : undefined,
+    };
+}
+
+// Index-keyed map takes priority — lets you target a specific occurrence of a repeated character.
+const indexTiltMap = computed<Map<number, ResolvedTilt>>(() => {
+    const map = new Map<number, ResolvedTilt>();
 
     for (const g of props.tilt) {
         const targets = Array.isArray(g.chars) ? g.chars : [g.chars];
 
-        for (const c of targets) {
-            map.set(c, g);
-        }
+        targets.forEach((c, idx) => {
+            if (typeof c === 'number') {
+                map.set(c, resolveProps(g, idx));
+            }
+        });
+    }
+
+    return map;
+});
+
+// Character-keyed map (case-insensitive) — matches all occurrences of that letter.
+const charTiltMap = computed<Map<string, ResolvedTilt>>(() => {
+    const map = new Map<string, ResolvedTilt>();
+
+    for (const g of props.tilt) {
+        const targets = Array.isArray(g.chars) ? g.chars : [g.chars];
+
+        targets.forEach((c, idx) => {
+            if (typeof c === 'string') {
+                map.set(c.toUpperCase(), resolveProps(g, idx));
+            }
+        });
     }
 
     return map;
@@ -198,7 +252,7 @@ const chars = computed(() =>
     [...props.text].map((char, i) => {
         const f = frozen.value[i];
         const delay = ((i * 1.618034) % props.spread).toFixed(2);
-        const t = tiltMap.value.get(char);
+        const t = indexTiltMap.value.get(i) ?? charTiltMap.value.get(char.toUpperCase());
 
         const style: Record<string, string> = {
             animationName: f.name,
