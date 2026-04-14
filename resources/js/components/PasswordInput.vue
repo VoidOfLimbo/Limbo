@@ -25,7 +25,7 @@ defineExpose({
         <Input
             ref="inputRef"
             :type="showPassword ? 'text' : 'password'"
-            :class="cn('pr-10', props.class)"
+            :class="cn('pr-10 [&::-ms-reveal]:hidden [&::-webkit-contacts-auto-fill-button]:hidden', props.class)"
             v-bind="$attrs"
         />
         <button

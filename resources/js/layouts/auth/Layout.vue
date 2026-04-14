@@ -21,7 +21,8 @@ defineProps<{
                     <!-- Branded left panel -->
                     <div class="relative hidden h-full flex-col bg-zinc-900 p-10 text-white md:flex">
                         <div class="absolute inset-0 bg-zinc-900" />
-                        // TODO: Add some cosmic SVG illustrations here that represents shiva, cosmic consciousness, limbo, etc.
+                        // TODO: Add some cosmic SVG illustrations here that represents shiva, cosmic consciousness,
+                        limbo, etc.
                     </div>
 
                     <!-- Form panel -->
@@ -49,8 +50,8 @@ defineProps<{
                 </CardContent>
             </Card>
         </div>
-        <p class="px-6 text-center text-xs text-muted-foreground">
-            By clicking continue, you agree to our
+        <p class="px-6 pt-2.5 text-center text-xs text-muted-foreground">
+            By submitting this form, you agree to our
             <Link :href="termsOfService()" class="underline underline-offset-4 transition-colors hover:text-foreground">
                 Terms of Service</Link>
             and
