@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', HomeController::class)->name('home');
 
 Route::inertia('privacy-policy', 'Legal/PrivacyPolicy')->name('privacy-policy');
+Route::inertia('terms-of-service', 'Legal/TermsOfService')->name('terms-of-service');
 
 Route::inertia('invite', 'Invite')->name('invite');
 
