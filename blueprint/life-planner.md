@@ -293,6 +293,113 @@ All views display the same underlying data — just different presentations. Swi
 | **Timezone handling** | All datetimes stored as UTC. The frontend converts to the user's browser/local timezone for display. No per-event timezone stored for v1. |
 | **Inviting non-users** | Only registered users who are members of the platform can be invited. No email-only external invites. |
 | **iCalendar export** | `.ics` export supported from day one — users can sync events to Google Calendar, Apple Calendar, etc. |
+| **`skipped` in progress calc** | Excluded from the denominator alongside `cancelled` and snoozed events. |
+| **Data loading / update strategy** | See **Data Loading Architecture** section below. No Pinia, no separate REST API, no client-side cache. |
+| **Hard milestone `end_at` mutability** | The field is fully immutable once set — cannot be increased or decreased via UI or API. Resolve breaches by adjusting events, moving events to backlog, deleting events, or converting to a soft deadline. |
+| **Default view on `/planner`** | When no `?milestone=` param is present, auto-select the first milestone ordered by `created_at`. If no milestones exist, show the Backlog tab. |
+| **Route file** | Life Planner routes live in `routes/planner.php`, included from `routes/web.php`. Keeps web.php clean as the feature grows. |
+| **ICS status mapping** | `draft`/`upcoming` → `TENTATIVE`, `in_progress` → `CONFIRMED`, `completed` → `COMPLETED`, `cancelled`/`skipped` → `CANCELLED`. |
+
+---
+
+## Data Loading Architecture
+
+All data interactions follow a strict layered strategy. No Pinia, no separate REST API, no client-side cache to synchronise. Inertia's partial reload + deferred prop model handles everything.
+
+### Layer 1 — Initial load: only what is immediately visible
+
+`PlannerController::index()` returns milestone tabs and filter state as standard props (rendered synchronously). Expensive lists (`events`, `tags`) are returned as `Inertia::defer()` — they arrive in a second automatic request right after the page mounts. Vue shows animated skeleton pulse states while deferred props are `undefined`.
+
+```php
+return Inertia::render('Planner/Index', [
+    'milestones'        => $milestones,               // standard — tabs render immediately
+    'activeMilestoneId' => $request->milestone,       // standard — drives active tab
+    'filters'           => $filters,                  // standard — drives filter UI state
+    'events'            => Inertia::defer(fn() => $events), // deferred
+    'tags'              => Inertia::defer(fn() => $tags),   // deferred
+]);
+```
+
+### Layer 2 — After CRUD: partial reloads (not full page)
+
+After any mutation, reload only the props that changed. `preserveScroll: true` keeps the viewport position.
+
+| Action | Partial reload scope |
+|---|---|
+| Create / update / delete event | `only: ['events']` |
+| Snooze event | `only: ['events']` |
+| Create / update milestone | `only: ['milestones', 'events']` (breach recalc) |
+| Attach / detach tag | `only: ['events']` or `only: ['milestones']` |
+| Change filter | `only: ['events']` |
+
+```ts
+router.delete(EventController.destroy(event.id), {
+    preserveScroll: true,
+    only: ['events'],
+})
+```
+
+### Layer 3 — Instant feedback: optimistic updates
+
+For snooze, status toggles, and any action with a predictable outcome: apply the change to Inertia props immediately before the server responds. Inertia automatically rolls back on failure — no manual undo needed.
+
+```ts
+router.optimistic((props) => ({
+    events: {
+        ...props.events,
+        data: props.events.data.filter(e => e.id !== event.id),
+    },
+})).post(EventController.snooze(event.id), { snoozed_until: until })
+```
+
+### Layer 4 — Off-screen content: `WhenVisible`
+
+Sections below the fold (Backlog tab content, analytics, snoozed events section) are wrapped in Inertia's `<WhenVisible>` component backed by `Inertia::defer()` props. The server query runs only when the element scrolls into the viewport. Each section supplies its own skeleton fallback.
+
+### Layer 5 — Long lists: `InfiniteScroll`
+
+For milestones with large event counts, events are paginated server-side with `Inertia::merge()` and loaded incrementally client-side with `<InfiniteScroll>`. New pages are appended to the existing list, not replaced.
+
+```php
+'events' => Inertia::merge(fn() => $events->paginate(20)),
+```
+
+### Layer 6 — Fire-and-forget / search-in-drawer: `useHttp`
+
+`useHttp` is used only for standalone requests that do not produce a page prop update — e.g. a tag autocomplete search inside a drawer, or a fire-and-forget analytics ping. For anything that modifies data the page already tracks, prefer partial reloads so the server remains the single source of truth.
+
+---
+
+## Development Philosophy
+
+These principles apply across every phase and every file in this feature.
+
+### Standards
+- Every implementation decision defaults to the **best available approach** for correctness, performance, and long-term maintainability — not the fastest-to-type approach.
+- Follow Laravel best practices (form requests, policies, Eloquent scopes, service classes for complex logic) and Vue best practices (composables, single-responsibility components, `defineProps` + `defineEmits`).
+- All PHP must pass Pint. All TypeScript/Vue must pass ESLint and Prettier.
+- Every code path that matters must have a Pest feature test.
+
+### Reusability & Component Extraction
+- Components are built for extraction from day one. Every Planner component lives under `@/components/planner/` with a `Planner` prefix and zero coupling to page-level state.
+- Props drive everything — no component reads from a global store or accesses `usePage()` inside a leaf component.
+- Shared logic (date formatting, colour contrast, snooze offset calculation) lives in composables under `@/composables/planner/`.
+- When a pattern appears twice, extract it. When a component exceeds ~200 lines of template, split it.
+
+### Performance
+- Follow the Data Loading Architecture above for every page in this feature.
+- Never load data that is not needed for the current view. Use `only`, `defer`, and `WhenVisible` aggressively.
+- Optimistic updates for all actions where the outcome is predictable. No spinner for snooze, status toggle, or tag attach.
+- Virtual scroll for any list that may exceed 50 items in a viewport.
+- `preserveScroll: true` on every mutation that is not a deliberate navigation action.
+
+### UX
+- Every async operation has a loading state — skeleton pulse for initial loads, spinner or disabled state for mutations.
+- Every destructive action (delete event, delete milestone) requires a confirm dialog.
+- Every form supports keyboard navigation and accessible labels (via reka-ui primitives).
+- Filters and active milestone are persisted as URL query params — pages are bookmarkable and shareable.
+- Toast notifications confirm mutations (created, updated, deleted, snoozed). No silent writes.
+- Drawers do not navigate away from `/planner`. All CRUD opens a drawer or in-place inline form.
 
 ---
 

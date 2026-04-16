@@ -266,6 +266,48 @@ Standard Fortify action stubs, customized for this app:
 
 ---
 
+## Development Standards
+
+These apply to every feature and file in this codebase. Non-negotiable.
+
+### General
+- Always use the **best available approach** for the framework and stack — not the shortest. Correctness, performance, and maintainability come first.
+- Follow the AGENTS.md skill guidelines. Load the relevant skill before touching a domain (Pest, Inertia, Wayfinder, Tailwind, etc.).
+- Every change must be tested. Write or update Pest feature tests and run them before marking work done.
+- Run `vendor/bin/pint --dirty --format agent` after every PHP file change.
+
+### Backend (Laravel)
+- All input validation lives in Form Requests — never in controllers.
+- All authorization lives in Policies — never inline `if ($user->id !== $resource->user_id)`.
+- Eloquent scopes for any reusable query condition. No raw query duplication across controllers.
+- Service classes or Action classes for business logic that spans more than one model/concept.
+- Eager-load relationships before iterating — no N+1 ever ships.
+
+### Frontend (Vue + Inertia)
+- **Data loading follows the layered strategy** (see `blueprint/life-planner.md` → Data Loading Architecture):
+  - Standard props for data needed on first render.
+  - `Inertia::defer()` for secondary data; Vue shows skeleton pulse states while `undefined`.
+  - `router.reload({ only: [...], preserveScroll: true })` for post-mutation updates.
+  - `router.optimistic()` for instant feedback on predictable actions (snooze, toggle).
+  - `<WhenVisible>` + `Inertia::defer()` for off-screen sections.
+  - `Inertia::merge()` + `<InfiniteScroll>` for long paginated lists.
+  - `useHttp` only for standalone requests that produce no page prop update.
+- Components are single-responsibility. When a component exceeds ~200 lines of template, split it.
+- No component reads `usePage()` or touches global state internally — props drive everything.
+- Shared logic lives in composables (`@/composables/`). If a pattern appears twice, extract it.
+- Every async operation has a visible loading/skeleton state. No silent waits.
+- Every destructive action has a confirm dialog.
+- All interactive elements are accessible (keyboard nav, ARIA) via reka-ui primitives.
+- `preserveScroll: true` on every mutation that is not a deliberate page navigation.
+
+### Reusability & Extraction
+- Feature components live under `@/components/{feature}/` with a feature prefix (e.g. `Planner`).
+- Components are built with extraction in mind — zero coupling to page layout or route-specific logic.
+- Composables live under `@/composables/{feature}/`.
+- Design tokens (colours, spacing, radii) come from Tailwind config — no magic numbers in components.
+
+---
+
 ## What Doesn't Exist Yet
 
 - Any real dashboard content

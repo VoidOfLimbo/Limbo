@@ -233,6 +233,21 @@ GET    /planner              index   → Inertia render of Planner/Index.vue wit
 
 This is the single page entry point. It reads the `?milestone=`, `?view=`, and filter query params and passes them as Inertia props.
 
+**Data loading strategy (follow this exactly):**
+```php
+return Inertia::render('Planner/Index', [
+    // Standard — rendered synchronously; tabs and filter UI need these immediately
+    'milestones'        => $milestones,
+    'activeMilestoneId' => $request->string('milestone')->value() ?: null,
+    'filters'           => $filters,
+    // Deferred — fetched automatically after mount; show skeleton until resolved
+    'events'            => Inertia::defer(fn() => $events),
+    'tags'              => Inertia::defer(fn() => $tags),
+]);
+```
+
+After any mutation, controllers do **not** return JSON — they trigger a partial reload via `router.reload({ only: [...], preserveScroll: true })` from the frontend. The scope of `only` is the minimum set of props affected by the action (see Data Loading Architecture in `blueprint/life-planner.md`).
+
 ### `MilestoneController`
 ```
 GET    /milestones              index   → list user's milestones (with derived progress)
@@ -323,10 +338,9 @@ GET /planner  →  resources/js/pages/Planner/Index.vue
 The page receives these Inertia props from the controller:
 ```ts
 {
+  // Standard props — available synchronously on first render
   milestones: Milestone[]          // user's milestones (with progress, breach flag)
   activeMilestoneId: string | null // currently selected tab (from query param)
-  events: Paginated<Event>         // events for selected milestone or backlog
-  tags: Tag[]                      // user's tags (for filter chips)
   filters: {
     status?: string
     priority?: string
@@ -335,6 +349,9 @@ The page receives these Inertia props from the controller:
     date_to?: string
     show_snoozed?: boolean
   }
+  // Deferred props — undefined until the second request resolves; always guard with v-if
+  events: Paginated<Event> | undefined
+  tags: Tag[] | undefined
 }
 ```
 
