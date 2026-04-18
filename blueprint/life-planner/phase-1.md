@@ -562,22 +562,32 @@ All tests are Pest feature tests under `tests/Feature/Planner/`.
 
 ## Checklist
 
-- [ ] Migrations: all 8 tables
-- [ ] Enums: all 10 enums
-- [ ] Models: `Milestone`, `Event`, `Tag`, `EventReminder`, `EventOccurrence`, `EventParticipant`, `EventDependency`
-- [ ] Factories: `MilestoneFactory`, `EventFactory`, `TagFactory`
-- [ ] Policies: `MilestonePolicy`, `EventPolicy`, `TagPolicy`
-- [ ] Form Requests: Milestone (store/update), Event (store/update/snooze), Tag (store/update), AttachTag
-- [ ] Controllers: `PlannerController`, `MilestoneController`, `EventController`, `TagController`, `PlannerExportController`
-- [ ] Routes registered in `routes/web.php` (or `routes/planner.php` if extracted)
-- [ ] Run `wayfinder:generate`
-- [ ] `Planner/Index.vue` — List view with milestone tabs + Backlog tab
-- [ ] Milestone drawer component
-- [ ] Event drawer component
-- [ ] Snooze popover component
-- [ ] Filters panel component
-- [ ] Sidebar navigation entry
-- [ ] Breach warning UI (milestone header + event row)
-- [ ] iCalendar export endpoints
-- [ ] Pest tests (milestones, events, tags, export)
-- [ ] Run Pint: `vendor/bin/pint --dirty --format agent`
+- [x] Migrations: all 8 tables
+- [x] Enums: all 10 enums
+- [x] Models: `Milestone`, `Event`, `Tag`, `EventReminder`, `EventOccurrence`, `EventParticipant`, `EventDependency`
+- [x] Factories: `MilestoneFactory`, `EventFactory`, `TagFactory`
+- [x] Policies: `MilestonePolicy`, `EventPolicy`, `TagPolicy`
+- [x] Form Requests: Milestone (store/update), Event (store/update/snooze), Tag (store/update), AttachTag
+- [x] Controllers: `PlannerController`, `MilestoneController`, `EventController`, `TagController`, `PlannerExportController`
+- [x] Routes registered (`routes/planner.php`, included from `web.php`)
+- [x] Run `wayfinder:generate`
+- [x] `Planner/Index.vue` — List view with milestone tabs + Backlog tab
+- [x] `PlannerMilestoneDrawer` component
+- [x] `PlannerEventDrawer` component (tags field missing — see below)
+- [x] `PlannerSnoozePopover` component
+- [x] `PlannerFilters` component
+- [x] `PlannerMilestoneTabs` component
+- [x] `PlannerMilestoneHeader` component
+- [x] `PlannerEventList` component
+- [x] `PlannerEventRow` component
+- [x] Sidebar navigation entry
+- [x] iCalendar export endpoints
+- [x] Pest tests — 26 passing, 48 assertions
+- [x] Seeder — `PlannerSeeder` with full edge-case data
+- [ ] `PlannerContextMenu` — ⋮ / right-click: edit, snooze, move to backlog, delete
+- [ ] `PlannerBadge` — owned badge for status, priority, type, breach
+- [ ] `PlannerTagInput` — multi-select tag picker + inline create
+- [ ] `PlannerEmptyState` — empty state + CTA
+- [ ] Wire tag input into `PlannerEventDrawer` and `PlannerMilestoneDrawer`
+- [ ] Breach warning UI (red left border in `PlannerEventRow`, `⚠ N breaches` in `PlannerMilestoneHeader`)
+- [ ] Snooze toast confirmation after successful snooze

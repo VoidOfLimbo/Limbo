@@ -4,6 +4,39 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
+## Feature Progress
+
+### Life Planner — Phase 1
+
+| Area | Status |
+|---|---|
+| Migrations (8 tables) | ✅ Done |
+| Enums (10) | ✅ Done |
+| Models (7) | ✅ Done |
+| Factories (MilestoneFactory, EventFactory, TagFactory) | ✅ Done |
+| Policies (Milestone, Event, Tag) | ✅ Done |
+| Form Requests (8) | ✅ Done |
+| Controllers (PlannerController, MilestoneController, EventController, TagController, PlannerExportController) | ✅ Done |
+| Routes + Wayfinder generated | ✅ Done |
+| Pest tests — 26 passing (48 assertions) | ✅ Done |
+| Seeder (`PlannerSeeder` — all states, edge cases) | ✅ Done |
+| `Planner/Index.vue` page | ✅ Done |
+| `PlannerMilestoneTabs` | ✅ Done |
+| `PlannerMilestoneHeader` | ✅ Done |
+| `PlannerFilters` | ✅ Done |
+| `PlannerEventList` | ✅ Done |
+| `PlannerEventRow` | ✅ Done |
+| `PlannerEventDrawer` | ✅ Done (missing tag input) |
+| `PlannerMilestoneDrawer` | ✅ Done (missing tag input) |
+| `PlannerSnoozePopover` | ✅ Done |
+| `PlannerContextMenu` | ❌ TODO |
+| `PlannerBadge` | ❌ TODO |
+| `PlannerTagInput` + tags in drawers | ❌ TODO |
+| `PlannerEmptyState` | ❌ TODO |
+| Snooze toast confirmation | ❌ TODO |
+
+---
+
 ## Tech Stack
 
 | Layer | Package | Version |
@@ -60,6 +93,83 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 ### Standard Laravel tables
 `password_reset_tokens`, `sessions`, `cache`, `jobs`
 
+### Life Planner tables
+
+#### `milestones`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | ULID (PK) | |
+| `user_id` | ULID FK → `users.id` | cascade delete |
+| `title` | string | |
+| `description` | text | nullable |
+| `status` | string | `active` / `completed` / `paused` / `cancelled` |
+| `priority` | string | `low` / `medium` / `high` / `critical` |
+| `start_at` | timestamp | nullable |
+| `end_at` | timestamp | nullable |
+| `duration_source` | string | `derived` / `manual` |
+| `deadline_type` | string | `soft` / `hard` |
+| `progress_source` | string | `derived` / `manual` |
+| `progress_override` | smallint | nullable, 0–100 |
+| `visibility` | string | `private` / `shared` |
+| `color` | string(7) | nullable, hex e.g. `#3b82f6` |
+| `created_at` / `updated_at` | timestamps | |
+| `deleted_at` | timestamp | soft delete |
+
+#### `events`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | ULID (PK) | |
+| `user_id` | ULID FK → `users.id` | cascade delete |
+| `milestone_id` | ULID FK → `milestones.id` | nullable, null on delete |
+| `parent_event_id` | ULID FK → `events.id` | nullable, null on delete |
+| `title` | string | |
+| `description` | text | nullable |
+| `type` | string | `event` / `task` / `milestone_marker` |
+| `status` | string | `draft` / `upcoming` / `in_progress` / `completed` / `cancelled` / `skipped` |
+| `priority` | string | `low` / `medium` / `high` / `critical` |
+| `start_at` | timestamp | nullable |
+| `end_at` | timestamp | nullable |
+| `is_all_day` | boolean | default false |
+| `is_milestone_marker` | boolean | default false |
+| `recurrence_rule` | json | nullable |
+| `recurrence_ends_at` | timestamp | nullable |
+| `recurrence_count` | unsignedInteger | nullable |
+| `visibility` | string | `private` / `shared` |
+| `color` | string(7) | nullable |
+| `location` | string | nullable |
+| `snoozed_until` | timestamp | nullable |
+| `snooze_count` | smallint | default 0 |
+| `created_at` / `updated_at` | timestamps | |
+| `deleted_at` | timestamp | soft delete |
+
+#### `tags`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | ULID (PK) | |
+| `user_id` | ULID FK → `users.id` | cascade delete |
+| `name` | string | unique per user |
+| `color` | string(7) | nullable |
+| `created_at` / `updated_at` | timestamps | |
+
+#### `taggables` (polymorphic pivot)
+| Column | Type | Notes |
+|---|---|---|
+| `tag_id` | ULID FK → `tags.id` | |
+| `taggable_id` | ULID | morphs |
+| `taggable_type` | string | morphs |
+
+#### `event_reminders` (table only — delivery wired Phase 4)
+`id`, `event_id`, `offset_minutes`, `channels` (json), `sent_at`
+
+#### `event_occurrences` (table only — populated Phase 3)
+`id`, `event_id`, `start_at`, `end_at`, `status`, `overrides` (json)
+
+#### `event_participants` (table only — UI wired Phase 6)
+`id`, `event_id`, `user_id`, `invited_by`, `role`, `status`, `responded_at`
+
+#### `event_dependencies` (table only — UI wired Phase 5)
+`id`, `event_id`, `depends_on_event_id`, `type` (`blocking` / `informational`)
+
 ---
 
 ## Models
@@ -77,7 +187,30 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 - Fillable: `user_id`, `provider`, `provider_id`, `provider_token`, `provider_refresh_token`
 - Relations: `belongsTo(User::class)`
 
----
+### Life Planner Models
+
+#### `Milestone`
+- Traits: `HasUlids`, `HasFactory`, `SoftDeletes`
+- Fillable: `user_id`, `title`, `description`, `status`, `priority`, `start_at`, `end_at`, `duration_source`, `deadline_type`, `progress_source`, `progress_override`, `visibility`, `color`
+- Casts: `start_at` → datetime, `end_at` → datetime, `status` → `MilestoneStatus`, `priority` → `MilestonePriority`, `deadline_type` → `DeadlineType`, `duration_source` → `DurationSource`, `progress_source` → `ProgressSource`
+- Relations: `belongsTo(User)`, `hasMany(Event)`, `morphToMany(Tag, 'taggable')`
+- Computed: `getDerivedProgressAttribute()`, `getProgressAttribute()`, `isBreached()`, `derivedStartAt()`, `derivedEndAt()`
+
+#### `Event`
+- Traits: `HasUlids`, `HasFactory`, `SoftDeletes`
+- Fillable: full field list from schema
+- Casts: `start_at/end_at/snoozed_until` → datetime, `is_all_day/is_milestone_marker` → boolean, `recurrence_rule` → array, `status` → `EventStatus`, `type` → `EventType`, `priority` → `EventPriority`, `visibility` → `EventVisibility`
+- Relations: `belongsTo(User)`, `belongsTo(Milestone)`, `belongsTo(Event, 'parent_event_id')` as `parent`, `hasMany(Event, 'parent_event_id')` as `children`, `morphToMany(Tag, 'taggable')`, `hasMany(EventReminder)`, `hasMany(EventDependency)`, `hasMany(EventParticipant)`
+- Scopes: `scopeActive()`, `scopeSnoozed()`, `scopeForMilestone()`, `scopeBacklog()`
+- Methods: `isSnoozed()`, `isBreachingMilestone()`
+
+#### `Tag`
+- Traits: `HasUlids`, `HasFactory`
+- Fillable: `user_id`, `name`, `color`
+- Relations: `morphedByMany(Event)`, `morphedByMany(Milestone)`
+
+#### Stub models (tables + FK relations only)
+`EventReminder`, `EventOccurrence`, `EventParticipant`, `EventDependency`
 
 ## Enums
 
@@ -87,6 +220,21 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `Free` | `'free'` |
 | `Premium` | `'premium'` |
 | `Loyalist` | `'loyalist'` |
+
+### Life Planner Enums
+
+| Enum | Values |
+|---|---|
+| `EventStatus` | `draft` / `upcoming` / `in_progress` / `completed` / `cancelled` / `skipped` |
+| `EventType` | `event` / `task` / `milestone_marker` |
+| `EventPriority` | `low` / `medium` / `high` / `critical` |
+| `EventVisibility` | `private` / `shared` |
+| `MilestoneStatus` | `active` / `completed` / `paused` / `cancelled` |
+| `MilestonePriority` | `low` / `medium` / `high` / `critical` |
+| `DeadlineType` | `soft` / `hard` |
+| `DurationSource` | `derived` / `manual` |
+| `ProgressSource` | `derived` / `manual` |
+| `DependencyType` | `blocking` / `informational` |
 
 ---
 
@@ -130,6 +278,13 @@ Powered by **Fortify** (backend) + **Socialite** (OAuth).
 | GET | `/settings/security` | `SecurityController@edit` |
 | PUT | `/settings/password` | `SecurityController@update` (throttle 6/min) |
 | GET | `/settings/appearance` | `settings/Appearance` |
+| GET | `/planner` | `Planner\PlannerController@index` (named: `planner`) |
+| GET | `/planner/export/ics` | `Planner\PlannerExportController` (named: `planner.export.ics`) |
+| GET | `/planner/export/ics/event/{event}` | `Planner\PlannerExportController` (named: `planner.export.ics.event`) |
+| GET | `/planner/export/ics/milestone/{milestone}` | `Planner\PlannerExportController` (named: `planner.export.ics.milestone`) |
+| GET/POST/PUT/DELETE | `/events`, `/events/{event}`, `/events/{event}/snooze` | `Planner\EventController` |
+| GET/POST/PUT/DELETE | `/milestones`, `/milestones/{milestone}` | `Planner\MilestoneController` |
+| GET/POST/PUT/DELETE | `/tags`, `/tags/{tag}`, `/tags/{tag}/attach`, `/tags/{tag}/detach` | `Planner\TagController` |
 
 Fortify registers its own auth routes (login, register, logout, password, 2FA, email verify).
 
@@ -153,6 +308,7 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `settings/Profile.vue` | `/settings/profile` | yes |
 | `settings/Security.vue` | `/settings/security` | yes + verified |
 | `settings/Appearance.vue` | `/settings/appearance` | yes + verified |
+| `Planner/Index.vue` | `/planner` | yes + verified |
 
 ---
 
@@ -204,6 +360,22 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `PlaceholderPattern.vue` | Decorative background pattern |
 | `ui/` | shadcn-vue primitives (Badge, Button, etc.) |
 
+### Life Planner components (`resources/js/components/planner/`)
+| Component | Status | Purpose |
+|---|---|---|
+| `PlannerMilestoneTabs.vue` | ✅ Done | Horizontal tab strip for milestone switching + Backlog tab |
+| `PlannerMilestoneHeader.vue` | ✅ Done | Milestone band — title, progress bar, deadline badge, breach warning |
+| `PlannerFilters.vue` | ✅ Done | Collapsible filter panel — status, priority, tags, date range, snoozed toggle |
+| `PlannerEventList.vue` | ✅ Done | Paginated event list with deferred-prop skeleton state |
+| `PlannerEventRow.vue` | ✅ Done | Single event row — badges, dates, snooze indicator |
+| `PlannerEventDrawer.vue` | ✅ Done | Right-side sheet for create/edit event (missing tag input) |
+| `PlannerMilestoneDrawer.vue` | ✅ Done | Right-side sheet for create/edit milestone (missing tag input) |
+| `PlannerSnoozePopover.vue` | ✅ Done | Snooze preset picker |
+| `PlannerContextMenu` | ❌ TODO | ⋮ / right-click menu — edit, snooze, move to backlog, delete |
+| `PlannerBadge` | ❌ TODO | Owned badge for status, priority, type, breach |
+| `PlannerTagInput` | ❌ TODO | Multi-select tag picker + inline create |
+| `PlannerEmptyState` | ❌ TODO | Empty state illustration + CTA |
+
 ---
 
 ## Composables (`resources/js/composables/`)
@@ -215,6 +387,7 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `useInitials` | Derives initials from a name string |
 | `useTextScramble` | Drives the character-scramble animation used by `ScrambleText` |
 | `useTwoFactorAuth` | Manages 2FA setup state (QR fetch, confirmation, recovery codes) |
+| `planner/usePlannerFilters` | Manages planner filter state + URL sync |
 
 ---
 
