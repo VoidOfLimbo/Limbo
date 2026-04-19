@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Clock, MapPin, BellOff, ChevronRight, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { Clock, MapPin, BellOff, ChevronRight, ChevronDown, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag } from 'lucide-vue-next'
+import PlannerChildRow from '@/components/planner/PlannerChildRow.vue'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import PlannerContextMenu from '@/components/planner/PlannerContextMenu.vue'
@@ -10,6 +11,8 @@ const props = defineProps<{
     event: PlannerEvent
     showMilestone?: boolean
 }>()
+
+const expanded = ref(true)
 
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
@@ -196,11 +199,17 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                     <TooltipContent>{{ tagsTooltip }}</TooltipContent>
                 </Tooltip>
 
-                <!-- Children count -->
-                <span v-if="event.children.length" class="flex items-center gap-0.5 text-[11px]">
-                    <ChevronRight class="size-3" />
+                <!-- Children toggle -->
+                <button
+                    v-if="event.children.length"
+                    type="button"
+                    class="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded px-1 py-0.5 hover:bg-muted"
+                    @click.stop="expanded = !expanded"
+                >
+                    <ChevronDown v-if="expanded" class="size-3" />
+                    <ChevronRight v-else class="size-3" />
                     {{ event.children.length }} sub-task{{ event.children.length !== 1 ? 's' : '' }}
-                </span>
+                </button>
             </div>
         </div>
 
@@ -248,4 +257,21 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
         </div>
     </div>
     </PlannerContextMenu>
+
+    <!-- Children (collapsible) -->
+    <div
+        v-if="event.children.length && expanded"
+        class="border-l-2 border-border/40 ml-[26px]"
+    >
+        <PlannerChildRow
+            v-for="child in event.children"
+            :key="child.id"
+            :event="child"
+            @edit="emit('edit', $event)"
+            @snooze="emit('snooze', $event)"
+            @delete="emit('delete', $event)"
+            @toggle-status="emit('toggleStatus', $event)"
+            @duplicate="emit('duplicate', $event)"
+        />
+    </div>
 </template>

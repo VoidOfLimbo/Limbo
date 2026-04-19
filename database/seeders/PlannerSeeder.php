@@ -622,5 +622,292 @@ class PlannerSeeder extends Seeder
             'end_at' => now()->addMonths(1)->addWeeks(2),
             'visibility' => EventVisibility::Private,
         ])->tags()->attach([$t['research']->id, $t['learning']->id]);
+
+        // ─────────────────────────────────────────────────────────────────────
+        // HIERARCHY EDGE CASES
+        // Each block tests a distinct scenario for the collapsible sub-task UI
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Edge case 1: 1 parent → 1 child (singular label) ─────────────────
+        $hParent1 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msLaunch->id,
+            'title' => 'Prepare client onboarding kit',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addWeeks(3),
+            'end_at' => now()->addWeeks(3)->addDays(2),
+        ]);
+        $hParent1->tags()->attach([$t['career']->id]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msLaunch->id,
+            'parent_event_id' => $hParent1->id,
+            'title' => 'Write welcome email template',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addWeeks(3),
+            'end_at' => now()->addWeeks(3)->addHours(2),
+        ])->tags()->attach([$t['career']->id]);
+
+        // ── Edge case 2: parent + 5 mixed-status children (expand/collapse) ──
+        $hParent2 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msCert->id,
+            'title' => 'Build home lab for AWS practice',
+            'description' => 'Set up EC2, VPC, S3 and IAM locally via LocalStack.',
+            'type' => EventType::Task,
+            'status' => EventStatus::InProgress,
+            'priority' => EventPriority::High,
+            'start_at' => now()->subDays(5),
+            'end_at' => now()->addWeeks(1),
+        ]);
+        $hParent2->tags()->attach([$t['learning']->id, $t['research']->id]);
+
+        foreach ([
+            ['Install LocalStack via Docker',   EventStatus::Completed, EventPriority::High,   now()->subDays(5),  now()->subDays(5)->addHours(1)],
+            ['Configure IAM users & roles',     EventStatus::Completed, EventPriority::High,   now()->subDays(4),  now()->subDays(4)->addHours(2)],
+            ['Create and test VPC subnets',     EventStatus::InProgress, EventPriority::High,  now()->subDays(2),  now()->addDays(1)],
+            ['Set up S3 buckets with policies', EventStatus::Upcoming,  EventPriority::Medium, now()->addDays(2),  now()->addDays(3)],
+            ['Run end-to-end smoke test',       EventStatus::Upcoming,  EventPriority::Medium, now()->addWeeks(1), now()->addWeeks(1)->addHours(3)],
+        ] as [$title, $status, $priority, $start, $end]) {
+            Event::factory()->create([
+                'user_id' => $user->id,
+                'milestone_id' => $msCert->id,
+                'parent_event_id' => $hParent2->id,
+                'title' => $title,
+                'type' => EventType::Task,
+                'status' => $status,
+                'priority' => $priority,
+                'start_at' => $start,
+                'end_at' => $end,
+            ])->tags()->attach([$t['learning']->id]);
+        }
+
+        // ── Edge case 3: parent completed, children still in mixed states ─────
+        //    Tests that child status is independent of parent status
+        $hParent3 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msEmergency->id,
+            'title' => 'Negotiate salary raise',
+            'type' => EventType::Task,
+            'status' => EventStatus::Completed,
+            'priority' => EventPriority::Critical,
+            'start_at' => now()->subWeeks(2),
+            'end_at' => now()->subDays(3),
+        ]);
+        $hParent3->tags()->attach([$t['career']->id, $t['finance']->id]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msEmergency->id,
+            'parent_event_id' => $hParent3->id,
+            'title' => 'Research market rate for senior dev role',
+            'type' => EventType::Task,
+            'status' => EventStatus::Completed,
+            'priority' => EventPriority::High,
+            'start_at' => now()->subWeeks(2),
+            'end_at' => now()->subWeeks(2)->addDays(2),
+        ])->tags()->attach([$t['research']->id]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msEmergency->id,
+            'parent_event_id' => $hParent3->id,
+            'title' => 'Prepare negotiation talking points',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,     // parent done but this child still pending
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addDays(1),
+            'end_at' => now()->addDays(1)->addHours(2),
+        ]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msEmergency->id,
+            'parent_event_id' => $hParent3->id,
+            'title' => 'Follow-up email after meeting',
+            'type' => EventType::Task,
+            'status' => EventStatus::Skipped,      // deliberately skipped
+            'priority' => EventPriority::Low,
+            'start_at' => now()->subDays(1),
+            'end_at' => now()->subDays(1)->addHours(1),
+        ]);
+
+        // ── Edge case 4: child with snoozed status ────────────────────────────
+        $hParent4 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msLaunch->id,
+            'title' => 'Set up bookkeeping system',
+            'type' => EventType::Task,
+            'status' => EventStatus::InProgress,
+            'priority' => EventPriority::High,
+            'start_at' => now()->subDays(1),
+            'end_at' => now()->addDays(4),
+        ]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msLaunch->id,
+            'parent_event_id' => $hParent4->id,
+            'title' => 'Choose accounting software (FreeAgent vs Wave)',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addDays(1),
+            'end_at' => now()->addDays(1)->addHours(1),
+        ]);
+
+        // Snoozed child
+        Event::factory()->snoozed()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msLaunch->id,
+            'parent_event_id' => $hParent4->id,
+            'title' => 'Import first batch of receipts',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Low,
+            'start_at' => now()->addDays(2),
+            'end_at' => now()->addDays(2)->addHours(1),
+            'snoozed_until' => now()->addHours(8),
+            'snooze_count' => 1,
+        ]);
+
+        // ── Edge case 5: child with very long title + no dates ────────────────
+        //    Tests truncation & graceful handling of null start_at in children
+        $hParent5 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => null,     // backlog parent
+            'title' => 'Overhaul personal knowledge base',
+            'type' => EventType::Task,
+            'status' => EventStatus::InProgress,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->subDays(3),
+            'end_at' => now()->addWeeks(2),
+        ]);
+        $hParent5->tags()->attach([$t['learning']->id, $t['research']->id]);
+
+        // Child with very long title
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => null,
+            'parent_event_id' => $hParent5->id,
+            'title' => 'Migrate all book notes, course summaries, and research papers from scattered Notion pages into a unified Obsidian vault with proper MOC structure',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addDays(1),
+            'end_at' => now()->addDays(5),
+        ]);
+
+        // Child with no dates at all
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => null,
+            'parent_event_id' => $hParent5->id,
+            'title' => 'Design tagging taxonomy (no deadline)',
+            'type' => EventType::Task,
+            'status' => EventStatus::Draft,
+            'priority' => EventPriority::Low,
+            'start_at' => null,
+            'end_at' => null,
+        ])->tags()->attach([$t['research']->id]);
+
+        // Child with different tags from parent
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => null,
+            'parent_event_id' => $hParent5->id,
+            'title' => 'Export Roam Research graph backup',
+            'type' => EventType::Task,
+            'status' => EventStatus::Completed,
+            'priority' => EventPriority::Low,
+            'start_at' => now()->subDays(3),
+            'end_at' => now()->subDays(3)->addHours(1),
+        ])->tags()->attach([$t['home']->id, $t['urgent']->id]);
+
+        // ── Edge case 6: all children completed (parent still in-progress) ────
+        $hParent6 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => null,     // backlog
+            'title' => 'Tax return prep',
+            'type' => EventType::Task,
+            'status' => EventStatus::InProgress,
+            'priority' => EventPriority::Critical,
+            'start_at' => now()->subWeeks(1),
+            'end_at' => now()->addWeeks(1),
+        ]);
+        $hParent6->tags()->attach([$t['finance']->id, $t['urgent']->id]);
+
+        foreach ([
+            ['Gather all payslips and P60', now()->subWeeks(1),             now()->subWeeks(1)->addHours(2)],
+            ['Download bank statements',    now()->subDays(6),              now()->subDays(6)->addHours(1)],
+            ['Log business expenses',       now()->subDays(4),              now()->subDays(4)->addHours(3)],
+            ['Complete self-assessment form', now()->subDays(2),            now()->subDays(2)->addHours(2)],
+        ] as [$title, $start, $end]) {
+            Event::factory()->create([
+                'user_id' => $user->id,
+                'milestone_id' => null,
+                'parent_event_id' => $hParent6->id,
+                'title' => $title,
+                'type' => EventType::Task,
+                'status' => EventStatus::Completed,
+                'priority' => EventPriority::High,
+                'start_at' => $start,
+                'end_at' => $end,
+            ])->tags()->attach([$t['finance']->id]);
+        }
+
+        // ── Edge case 7: cancelled/skipped children ───────────────────────────
+        $hParent7 = Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msFitness->id,
+            'title' => 'Recovery & injury prevention week',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::Medium,
+            'start_at' => now()->addWeeks(2),
+            'end_at' => now()->addWeeks(3),
+        ]);
+        $hParent7->tags()->attach([$t['health']->id]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msFitness->id,
+            'parent_event_id' => $hParent7->id,
+            'title' => 'Book sports physio session',
+            'type' => EventType::Task,
+            'status' => EventStatus::Upcoming,
+            'priority' => EventPriority::High,
+            'start_at' => now()->addWeeks(2),
+            'end_at' => now()->addWeeks(2)->addHours(1),
+        ]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msFitness->id,
+            'parent_event_id' => $hParent7->id,
+            'title' => 'Foam rolling session (cancelled — injury)',
+            'type' => EventType::Event,
+            'status' => EventStatus::Cancelled,
+            'priority' => EventPriority::Low,
+            'start_at' => now()->addWeeks(2)->addDays(1),
+            'end_at' => now()->addWeeks(2)->addDays(1)->addMinutes(30),
+        ]);
+
+        Event::factory()->create([
+            'user_id' => $user->id,
+            'milestone_id' => $msFitness->id,
+            'parent_event_id' => $hParent7->id,
+            'title' => 'Ice bath (skipped — too cold)',
+            'type' => EventType::Event,
+            'status' => EventStatus::Skipped,
+            'priority' => EventPriority::Low,
+            'start_at' => now()->addWeeks(2)->addDays(2),
+            'end_at' => now()->addWeeks(2)->addDays(2)->addMinutes(20),
+        ]);
     }
 }

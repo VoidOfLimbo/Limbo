@@ -48,7 +48,13 @@ class PlannerController extends Controller
     {
         $query = Event::query()
             ->forUser($userId)
-            ->with(['tags', 'milestone:id,title,deadline_type,end_at', 'children:id,parent_event_id,title,status,priority,start_at,end_at'])
+            ->with([
+                'tags',
+                'milestone:id,title,deadline_type,end_at',
+                'children' => fn ($q) => $q
+                    ->with(['tags', 'milestone:id,title,deadline_type,end_at'])
+                    ->orderBy('start_at'),
+            ])
             ->whereNull('parent_event_id')
             ->orderBy('start_at');
 

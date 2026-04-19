@@ -28,16 +28,6 @@ export type EventStatus = 'draft' | 'upcoming' | 'in_progress' | 'completed' | '
 export type EventPriority = 'low' | 'medium' | 'high' | 'critical'
 export type EventType = 'event' | 'task' | 'milestone_marker'
 
-export interface PlannerEventChild {
-    id: string
-    parent_event_id: string
-    title: string
-    status: EventStatus
-    priority: EventPriority
-    start_at: string | null
-    end_at: string | null
-}
-
 export interface PlannerEvent {
     id: string
     user_id: string
@@ -60,7 +50,7 @@ export interface PlannerEvent {
     snooze_count: number
     tags: PlannerTag[]
     milestone: Pick<PlannerMilestone, 'id' | 'title' | 'deadline_type' | 'end_at'> | null
-    children: PlannerEventChild[]
+    children: PlannerEvent[]
 }
 
 export interface PaginatedData<T> {
