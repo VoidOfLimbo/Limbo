@@ -47,34 +47,35 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `PlannerEventDrawer` | ✅ Done (missing tag input) |
 | `PlannerMilestoneDrawer` | ✅ Done (missing tag input) |
 | `PlannerSnoozePopover` | ✅ Done |
-| `PlannerContextMenu` | ❌ TODO |
-| `PlannerBadge` | ❌ TODO |
-| `PlannerTagInput` + tags in drawers | ❌ TODO |
-| `PlannerEmptyState` | ❌ TODO |
-| Snooze toast confirmation | ❌ TODO |
+| `PlannerContextMenu` | ✅ Done |
+| `PlannerBadge` | ✅ Done |
+| `PlannerTagInput` + tags in drawers | ✅ Done |
+| `PlannerEmptyState` | ✅ Done |
+| Snooze toast confirmation | ✅ Done |
 
 ---
 
 ### Life Planner — Phase 2 (Table View + Board View)
 
-> **Status: Blueprint complete — not yet started**
+> **Status: Complete ✅**
 > See [`blueprint/planner-views.md`](./planner-views.md), [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md), [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md)
 
 | Area | Status |
 |---|---|
-| Install `@tanstack/vue-table` | ❌ TODO |
-| Install `vue-virtual-scroller` | ❌ TODO |
-| Install `@dnd-kit` (Vue adapter) | ❌ TODO |
-| `PlannerViewSwitcher` (List / Table / Board) | ❌ TODO |
-| `PlannerTableView` — TanStack Table + virtual scroll | ❌ TODO |
-| `PlannerColumnHeader` — resizable, sortable | ❌ TODO |
-| `PlannerTableRow` + `PlannerTableCell` | ❌ TODO |
-| `PlannerFieldCell` — inline editing (system fields) | ❌ TODO |
-| `PlannerBoardView` — dnd-kit columns + cards | ❌ TODO |
-| `PlannerBoardCard` — draggable | ❌ TODO |
-| `PlannerBoardAddCard` — inline add | ❌ TODO |
-| `PlannerBulkActionBar` — bulk status/priority/delete | ❌ TODO |
-| View config persisted to `localStorage` (Phase 2, before DB) | ❌ TODO |
+| Install `@tanstack/vue-table` | ✅ Done |
+| Install `vue-draggable-plus` (SortableJS-based; chosen over @dnd-kit/vue which is immature) | ✅ Done |
+| Install `vue-sonner` (toast notifications) | ✅ Done |
+| Install `pinia` | ✅ Done |
+| `resources/js/stores/planner.ts` — Pinia store, `activeView` persisted to localStorage | ✅ Done |
+| `PlannerViewSwitcher` (List / Table / Board) | ✅ Done |
+| `PlannerTableView` — TanStack Table (FlexRender, sorting, column resize) | ✅ Done |
+| `PlannerFieldCell` — inline editing for title field | ✅ Done |
+| `PlannerBoardView` — vue-draggable-plus columns + cards | ✅ Done |
+| `PlannerBoardColumn` — droppable zone per status | ✅ Done |
+| `PlannerBoardCard` — draggable; priority/type badges, date range, tags | ✅ Done |
+| `PlannerBoardAddCard` — inline title input at column bottom | ✅ Done |
+| `PlannerBulkActionBar` — bulk delete, clear selection | ✅ Done |
+| View type persisted to `localStorage` via Pinia store | ✅ Done |
 
 ---
 

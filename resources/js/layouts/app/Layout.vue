@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Toaster } from 'vue-sonner'
 import AppContent from '@/components/AppContent.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
@@ -22,4 +23,5 @@ withDefaults(defineProps<Props>(), {
             <slot />
         </AppContent>
     </AppShell>
+    <Toaster position="bottom-right" rich-colors />
 </template>

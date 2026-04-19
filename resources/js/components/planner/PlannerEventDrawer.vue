@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import {
     Sheet,
@@ -21,6 +21,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { store, update } from '@/actions/App/Http/Controllers/Planner/EventController'
+import { store as storeTag } from '@/actions/App/Http/Controllers/Planner/TagController'
+import PlannerTagInput from '@/components/planner/PlannerTagInput.vue'
 import type { PlannerEvent, PlannerMilestone, PlannerTag } from '@/types/planner'
 
 const props = defineProps<{
@@ -38,6 +40,10 @@ const emit = defineEmits<{
 
 const isEdit = () => !!props.event
 
+// Local tags list (extended when a new tag is created inline)
+const localTags = ref<PlannerTag[]>([...props.tags])
+watch(() => props.tags, (t) => { localTags.value = [...t] }, { deep: true })
+
 const form = reactive({
     title: '',
     description: '',
@@ -50,6 +56,7 @@ const form = reactive({
     is_all_day: false,
     location: '',
     visibility: 'private',
+    tag_ids: [] as string[],
 })
 
 const errors = reactive<Record<string, string>>({})
@@ -71,6 +78,7 @@ watch(
             form.is_all_day = evt.is_all_day
             form.location = evt.location ?? ''
             form.visibility = evt.visibility
+            form.tag_ids = evt.tags.map((t) => t.id)
         } else {
             form.title = ''
             form.description = ''
@@ -83,6 +91,7 @@ watch(
             form.is_all_day = false
             form.location = ''
             form.visibility = 'private'
+            form.tag_ids = []
         }
         Object.keys(errors).forEach((k) => delete errors[k])
     },
@@ -105,6 +114,7 @@ function submit() {
         is_all_day: form.is_all_day,
         location: form.location || undefined,
         visibility: form.visibility,
+        tag_ids: form.tag_ids,
     }
 
     const definition = isEdit()
@@ -242,6 +252,28 @@ function submit() {
                 <div class="space-y-1.5">
                     <Label for="evt-location">Location</Label>
                     <Input id="evt-location" v-model="form.location" placeholder="Optional location" class="h-8 text-sm" />
+                </div>
+
+                <!-- Tags -->
+                <div class="space-y-1.5">
+                    <Label>Tags</Label>
+                    <PlannerTagInput
+                        v-model="form.tag_ids"
+                        :tags="localTags"
+                        @create="async (name) => {
+                            const def = storeTag()
+                            const res = await fetch(def.url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
+                                body: JSON.stringify({ name }),
+                            })
+                            if (res.ok) {
+                                const tag = await res.json()
+                                localTags.value = [...localTags.value, tag]
+                                form.tag_ids = [...form.tag_ids, tag.id]
+                            }
+                        }"
+                    />
                 </div>
 
                 <!-- Visibility -->

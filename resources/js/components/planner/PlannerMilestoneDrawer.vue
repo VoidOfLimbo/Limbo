@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import {
     Sheet,
@@ -21,11 +21,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { store, update } from '@/actions/App/Http/Controllers/Planner/MilestoneController'
-import type { PlannerMilestone } from '@/types/planner'
+import { store as storeTag } from '@/actions/App/Http/Controllers/Planner/TagController'
+import PlannerTagInput from '@/components/planner/PlannerTagInput.vue'
+import type { PlannerMilestone, PlannerTag } from '@/types/planner'
 
 const props = defineProps<{
     open: boolean
     milestone?: PlannerMilestone | null
+    tags?: PlannerTag[]
 }>()
 
 const emit = defineEmits<{
@@ -47,10 +50,15 @@ const form = reactive({
     end_at: '',
     color: '',
     visibility: 'private',
+    tag_ids: [] as string[],
 })
 
 const errors = reactive<Record<string, string>>({})
 let processing = false
+
+// Local tag list
+const localTags = ref<PlannerTag[]>([...(props.tags ?? [])])
+watch(() => props.tags, (t) => { localTags.value = [...(t ?? [])] }, { deep: true })
 
 watch(
     () => props.milestone,
@@ -67,6 +75,7 @@ watch(
             form.end_at = m.end_at ? m.end_at.slice(0, 10) : ''
             form.color = m.color ?? ''
             form.visibility = m.visibility
+            form.tag_ids = (m as PlannerMilestone & { tags?: PlannerTag[] }).tags?.map((t) => t.id) ?? []
         } else {
             form.title = ''
             form.description = ''
@@ -79,6 +88,7 @@ watch(
             form.end_at = ''
             form.color = ''
             form.visibility = 'private'
+            form.tag_ids = []
         }
         Object.keys(errors).forEach((k) => delete errors[k])
     },
@@ -101,6 +111,7 @@ function submit() {
         end_at: form.end_at || undefined,
         color: form.color || undefined,
         visibility: form.visibility,
+        tag_ids: form.tag_ids,
     }
 
     const definition = isEdit() ? update(props.milestone!.id) : store()
@@ -263,6 +274,28 @@ function submit() {
                         </Button>
                     </div>
                     <p v-if="errors.color" class="text-xs text-destructive">{{ errors.color }}</p>
+                </div>
+
+                <!-- Tags -->
+                <div class="space-y-1.5">
+                    <Label>Tags</Label>
+                    <PlannerTagInput
+                        v-model="form.tag_ids"
+                        :tags="localTags"
+                        @create="async (name) => {
+                            const def = storeTag()
+                            const res = await fetch(def.url, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
+                                body: JSON.stringify({ name }),
+                            })
+                            if (res.ok) {
+                                const tag = await res.json()
+                                localTags.value = [...localTags.value, tag]
+                                form.tag_ids = [...form.tag_ids, tag.id]
+                            }
+                        }"
+                    />
                 </div>
 
                 <!-- Visibility -->

@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { toast } from 'vue-sonner'
 import { planner as plannerRoute } from '@/routes'
 import PlannerMilestoneTabs from '@/components/planner/PlannerMilestoneTabs.vue'
 import PlannerMilestoneHeader from '@/components/planner/PlannerMilestoneHeader.vue'
@@ -10,10 +11,14 @@ import PlannerEventList from '@/components/planner/PlannerEventList.vue'
 import PlannerEventDrawer from '@/components/planner/PlannerEventDrawer.vue'
 import PlannerMilestoneDrawer from '@/components/planner/PlannerMilestoneDrawer.vue'
 import PlannerSnoozePopover from '@/components/planner/PlannerSnoozePopover.vue'
+import PlannerViewSwitcher from '@/components/planner/PlannerViewSwitcher.vue'
+import PlannerTableView from '@/components/planner/PlannerTableView.vue'
+import PlannerBoardView from '@/components/planner/PlannerBoardView.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { destroy, snooze as snoozeEvent, update as updateEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
+import { destroy, snooze as snoozeEvent, update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
 import { usePlannerFilters } from '@/composables/planner/usePlannerFilters'
+import { usePlannerStore } from '@/stores/planner'
 import type { PaginatedData, PlannerEvent, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag } from '@/types/planner'
 
 defineOptions({
@@ -34,6 +39,9 @@ const props = defineProps<{
 const activeMilestone = computed(() =>
     props.milestones.find((m) => m.id === props.activeMilestoneId) ?? null,
 )
+
+// ── View store ───────────────────────────────────────────────────────────────
+const plannerStore = usePlannerStore()
 
 // ── Filters ──────────────────────────────────────────────────────────────────
 const { applyFilters, clearFilters, hasActiveFilters } = usePlannerFilters(props.filters, props.activeMilestoneId)
@@ -85,7 +93,13 @@ function handleSnooze(eventId: string, until: string) {
         data: { snoozed_until: until },
         preserveScroll: true,
         only: ['events'],
-        onSuccess: () => { snoozingEvent.value = null },
+        onSuccess: () => {
+            const title = snoozingEvent.value?.title ?? 'Event'
+            snoozingEvent.value = null
+            toast.success('Event snoozed', {
+                description: `"${title}" will resurface at the selected time.`,
+            })
+        },
     })
 }
 
@@ -119,6 +133,30 @@ function toggleStatus(event: PlannerEvent) {
         data: { status: newStatus },
         preserveScroll: true,
         only: ['events', 'milestones'],
+    })
+}
+
+// ── Duplicate ─────────────────────────────────────────────────────────────────
+function duplicateEvent(event: PlannerEvent) {
+    const def = storeEvent()
+    router.visit(def.url, {
+        method: def.method,
+        data: {
+            title: `${event.title} (copy)`,
+            description: event.description ?? undefined,
+            type: event.type,
+            status: 'upcoming',
+            priority: event.priority,
+            milestone_id: event.milestone_id ?? undefined,
+            start_at: event.start_at ?? undefined,
+            end_at: event.end_at ?? undefined,
+            is_all_day: event.is_all_day,
+            location: event.location ?? undefined,
+            visibility: event.visibility,
+            tag_ids: event.tags.map((t) => t.id),
+        },
+        preserveScroll: true,
+        only: ['events'],
     })
 }
 
@@ -167,17 +205,23 @@ function loadMore() {
             </Button>
         </div>
 
-        <!-- Filters bar -->
-        <PlannerFilters
-            :filters="filters"
-            :tags="tags ?? []"
-            :is-active="hasActiveFilters(filters)"
-            @change="applyFilters"
-            @clear="clearFilters"
-        />
+        <!-- Filters + view switcher bar -->
+        <div class="flex items-center gap-2 border-b border-border px-4 py-2 shrink-0">
+            <div class="flex-1">
+                <PlannerFilters
+                    :filters="filters"
+                    :tags="tags ?? []"
+                    :is-active="hasActiveFilters(filters)"
+                    @change="applyFilters"
+                    @clear="clearFilters"
+                />
+            </div>
+            <PlannerViewSwitcher />
+        </div>
 
-        <!-- Event list (scrollable) -->
+        <!-- Viewport (swaps based on active view) -->
         <PlannerEventList
+            v-if="plannerStore.activeView === 'list'"
             :events="events"
             :show-milestone="activeMilestoneId === null"
             :loading="loadingMore"
@@ -185,8 +229,35 @@ function loadMore() {
             @snooze="openSnooze"
             @delete="openDelete"
             @toggle-status="toggleStatus"
+            @duplicate="duplicateEvent"
             @load-more="loadMore"
         />
+
+        <!-- Table + Board views (stubs until implemented) -->
+        <PlannerTableView
+            v-else-if="plannerStore.activeView === 'table'"
+            :events="events?.data ?? []"
+            :show-milestone="activeMilestoneId === null"
+            @edit="openEditEvent"
+            @snooze="openSnooze"
+            @delete="openDelete"
+            @toggle-status="toggleStatus"
+            @duplicate="duplicateEvent"
+        />
+        <div
+            v-else
+            class="flex-1 overflow-hidden"
+        >
+            <PlannerBoardView
+                :events="events?.data ?? []"
+                :active-milestone-id="activeMilestoneId"
+                @edit="openEditEvent"
+                @snooze="openSnooze"
+                @delete="openDelete"
+                @toggle-status="toggleStatus"
+                @duplicate="duplicateEvent"
+            />
+        </div>
     </div>
 
     <!-- Event create/edit drawer -->
@@ -202,6 +273,7 @@ function loadMore() {
     <PlannerMilestoneDrawer
         v-model:open="milestoneDrawerOpen"
         :milestone="editingMilestone"
+        :tags="tags ?? []"
     />
 
     <!-- Snooze popover (rendered as a modal overlay for simplicity) -->

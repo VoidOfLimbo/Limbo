@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { CalendarX2 } from 'lucide-vue-next'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
+import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
 import type { PaginatedData, PlannerEvent } from '@/types/planner'
 
 const props = defineProps<{
@@ -16,6 +16,7 @@ const emit = defineEmits<{
     snooze: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
+    duplicate: [event: PlannerEvent]
     loadMore: []
 }>()
 </script>
@@ -44,6 +45,7 @@ const emit = defineEmits<{
                 @snooze="emit('snooze', $event)"
                 @delete="emit('delete', $event)"
                 @toggle-status="emit('toggleStatus', $event)"
+                @duplicate="emit('duplicate', $event)"
             />
 
             <!-- Load more (pagination) -->
@@ -64,12 +66,10 @@ const emit = defineEmits<{
         </template>
 
         <!-- Empty state -->
-        <div v-else class="flex flex-col items-center justify-center gap-3 py-20 text-center px-4">
-            <CalendarX2 class="size-10 text-muted-foreground/40" />
-            <div class="space-y-1">
-                <p class="text-sm font-medium text-muted-foreground">No events yet</p>
-                <p class="text-xs text-muted-foreground/60">Add your first event to get started.</p>
-            </div>
-        </div>
+        <PlannerEmptyState
+            v-else
+            title="No events yet"
+            description="Add your first event to get started."
+        />
     </div>
 </template>

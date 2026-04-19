@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { Clock, MapPin, BellOff, ChevronRight, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag } from 'lucide-vue-next'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import PlannerContextMenu from '@/components/planner/PlannerContextMenu.vue'
 import type { PlannerEvent } from '@/types/planner'
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
     snooze: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
+    duplicate: [event: PlannerEvent]
 }>()
 
 const isCompleted = computed(() => props.event.status === 'completed')
@@ -80,6 +82,14 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
 </script>
 
 <template>
+    <PlannerContextMenu
+        :event="event"
+        @edit="emit('edit', $event)"
+        @snooze="emit('snooze', $event)"
+        @delete="emit('delete', $event)"
+        @toggle-status="emit('toggleStatus', $event)"
+        @duplicate="emit('duplicate', $event)"
+    >
     <div
         class="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors border-b border-border/50 cursor-default"
         :class="{ 'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped' }"
@@ -237,4 +247,5 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
             </Tooltip>
         </div>
     </div>
+    </PlannerContextMenu>
 </template>
