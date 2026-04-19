@@ -33,7 +33,15 @@ class PlannerController extends Controller
                 return $milestone;
             });
 
-        $activeMilestoneId = $request->string('milestone')->value() ?: ($milestones->first()?->id);
+        $milestoneParam = $request->string('milestone')->value();
+
+        if ($milestoneParam === 'backlog') {
+            $activeMilestoneId = null;
+        } elseif ($milestoneParam) {
+            $activeMilestoneId = $milestoneParam;
+        } else {
+            $activeMilestoneId = $milestones->first()?->id;
+        }
 
         return Inertia::render('Planner/Index', [
             'milestones' => $milestones,

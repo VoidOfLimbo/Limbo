@@ -122,7 +122,7 @@ function navigateTo(milestoneId: string | null) {
     open.value = false
     search.value = ''
     router.visit(window.location.pathname, {
-        data: { ...props.currentFilters, milestone: milestoneId ?? undefined },
+        data: { ...props.currentFilters, milestone: milestoneId ?? 'backlog' },
         preserveScroll: false,
         preserveState: false,
         replace: true,
