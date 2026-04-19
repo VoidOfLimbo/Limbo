@@ -4,6 +4,24 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
+## Blueprint Documents
+
+| Document | Purpose |
+|---|---|
+| [`blueprint/life-planner.md`](./life-planner.md) | Core data model, views overview, milestones, events, tags |
+| [`blueprint/life-planner/phase-1.md`](./life-planner/phase-1.md) | Phase 1 spec — migrations, models, controllers, list view |
+| [`blueprint/planner-views.md`](./planner-views.md) | **GitHub Projects-style views** — master doc, architecture, phase breakdown |
+| [`blueprint/planner-views/component-tree.md`](./planner-views/component-tree.md) | Full Vue component hierarchy for all views |
+| [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md) | Custom fields + view config tables (`planner_fields`, `planner_field_values`, `planner_views`) |
+| [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md) | Lighthouse GraphQL schema — types, queries, mutations, subscriptions |
+| [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md) | Echo + WebSocket strategy, optimistic UI pattern |
+| [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md) | TanStack Table + Vue Virtual Scroller implementation guide |
+| [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md) | dnd-kit Kanban board implementation guide |
+| [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md) | Roadmap/Timeline view — scoped for Phase 4 |
+| [`blueprint/inspiration.md`](./inspiration.md) | UI references, libraries, design inspiration |
+
+---
+
 ## Feature Progress
 
 ### Life Planner — Phase 1
@@ -34,6 +52,71 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `PlannerTagInput` + tags in drawers | ❌ TODO |
 | `PlannerEmptyState` | ❌ TODO |
 | Snooze toast confirmation | ❌ TODO |
+
+---
+
+### Life Planner — Phase 2 (Table View + Board View)
+
+> **Status: Blueprint complete — not yet started**
+> See [`blueprint/planner-views.md`](./planner-views.md), [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md), [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md)
+
+| Area | Status |
+|---|---|
+| Install `@tanstack/vue-table` | ❌ TODO |
+| Install `vue-virtual-scroller` | ❌ TODO |
+| Install `@dnd-kit` (Vue adapter) | ❌ TODO |
+| `PlannerViewSwitcher` (List / Table / Board) | ❌ TODO |
+| `PlannerTableView` — TanStack Table + virtual scroll | ❌ TODO |
+| `PlannerColumnHeader` — resizable, sortable | ❌ TODO |
+| `PlannerTableRow` + `PlannerTableCell` | ❌ TODO |
+| `PlannerFieldCell` — inline editing (system fields) | ❌ TODO |
+| `PlannerBoardView` — dnd-kit columns + cards | ❌ TODO |
+| `PlannerBoardCard` — draggable | ❌ TODO |
+| `PlannerBoardAddCard` — inline add | ❌ TODO |
+| `PlannerBulkActionBar` — bulk status/priority/delete | ❌ TODO |
+| View config persisted to `localStorage` (Phase 2, before DB) | ❌ TODO |
+
+---
+
+### Life Planner — Phase 3 (GraphQL + Custom Fields + Real-time)
+
+> **Status: Blueprint complete — not yet started**
+> See [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md), [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md), [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md)
+
+| Area | Status |
+|---|---|
+| Install Lighthouse (`nuwave/lighthouse`) | ❌ TODO |
+| Install Soketi (via Sail) | ❌ TODO |
+| Install `laravel-echo` + `pusher-js` | ❌ TODO |
+| Migrations: `planner_fields`, `planner_field_values`, `planner_views` | ❌ TODO |
+| Models: `PlannerField`, `PlannerFieldValue`, `PlannerView` | ❌ TODO |
+| `PlannerSystemFieldsSeeder` | ❌ TODO |
+| GraphQL schema (`graphql/schema.graphql`) | ❌ TODO |
+| GraphQL resolvers (queries, mutations, subscriptions) | ❌ TODO |
+| Broadcast events + observers | ❌ TODO |
+| Channel authorization (`routes/channels.php`) | ❌ TODO |
+| Pinia `usePlannerStore` with optimistic mutation map | ❌ TODO |
+| `useOptimisticUpdate` composable | ❌ TODO |
+| `usePlannerRealtime` composable (Echo subscription) | ❌ TODO |
+| `PlannerFieldManager` — custom field CRUD | ❌ TODO |
+| Custom field columns in Table view | ❌ TODO |
+| Custom field grouping in Board view | ❌ TODO |
+| `planner_views` saved/named views (replace localStorage) | ❌ TODO |
+
+---
+
+### Life Planner — Phase 4 (Roadmap View)
+
+> **Status: Blueprint scoped — design only**
+> See [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md)
+
+| Area | Status |
+|---|---|
+| `PlannerRoadmapView` — timeline canvas | ❌ Future |
+| `useRoadmapLayout` composable (dateToX, zoom levels) | ❌ Future |
+| Bar drag + resize (useDraggable) | ❌ Future |
+| Dependency arrows (SVG overlay) | ❌ Future |
+| Iteration field type + `planner_iterations` table | ❌ Future |
 
 ---
 
