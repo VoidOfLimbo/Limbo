@@ -46,6 +46,7 @@ An event is a discrete unit of planned activity. Events live either directly on 
 | `location` | string | nullable |
 | `snoozed_until` | datetime | nullable — event is suppressed from views until this datetime |
 | `snooze_count` | integer | default 0 — how many times this event has been snoozed |
+| `sort_order` | integer | nullable — manual list-view sort order; ordered `NULLS LAST, start_at ASC` |
 | `created_at` / `updated_at` | timestamps | |
 | `deleted_at` | timestamp | soft delete |
 
@@ -414,6 +415,10 @@ Logic and behaviour utilities are fair game — they handle well-defined problem
 | Package | Status | Purpose |
 |---|---|---|
 | `@vueuse/core` | ✅ Installed | `useDraggable`, `useResizeObserver`, `useElementBounding` — drag/drop and layout |
+| `vue-draggable-plus` | ✅ Installed | SortableJS-based drag-and-drop — used in Board view (cross-column) and List view (reorder) |
+| `vue-sonner` | ✅ Installed | Toast notifications |
+| `pinia` | ✅ Installed | State management — `planner.ts` store persists `activeView` to localStorage |
+| `vaul-vue` | ✅ Installed | Snap-point bottom drawer — used for event/milestone create–edit and milestone explorer |
 | `date-fns` | ❌ Add | All datetime math — grids, offsets, formatting, DST, recurrence expansion |
 | `colord` | ❌ Add | Hex color validation and contrast checking |
 | `lucide-vue-next` | ✅ Installed | Icons only |

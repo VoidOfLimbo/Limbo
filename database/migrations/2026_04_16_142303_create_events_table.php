@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->timestamp('snoozed_until')->nullable();
             $table->unsignedSmallInteger('snooze_count')->default(0);
+            $table->unsignedInteger('sort_order')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

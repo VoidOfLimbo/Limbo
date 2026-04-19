@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Clock, MapPin, BellOff, ChevronRight, ChevronDown, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag } from 'lucide-vue-next'
+import { Clock, MapPin, BellOff, ChevronRight, ChevronDown, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag, GripVertical } from 'lucide-vue-next'
 import PlannerChildRow from '@/components/planner/PlannerChildRow.vue'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -97,6 +97,9 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
         class="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors border-b border-border/50 cursor-default"
         :class="{ 'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped' }"
     >
+        <!-- Drag handle -->
+        <GripVertical class="drag-handle size-3.5 shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/60 cursor-grab active:cursor-grabbing transition-colors" />
+
         <!-- Status toggle -->
         <Tooltip>
             <TooltipTrigger as-child>
@@ -172,7 +175,7 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                 </span>
 
                 <!-- Location -->
-                <span v-if="event.location" class="flex items-center gap-1 truncate max-w-[200px]">
+                <span v-if="event.location" class="flex items-center gap-1 truncate max-w-50">
                     <MapPin class="size-3 shrink-0" />
                     {{ event.location }}
                 </span>
@@ -261,7 +264,7 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
     <!-- Children (collapsible) -->
     <div
         v-if="event.children.length && expanded"
-        class="border-l-2 border-border/40 ml-[26px]"
+        class="border-l-2 border-border/40 ml-6.5"
     >
         <PlannerChildRow
             v-for="child in event.children"

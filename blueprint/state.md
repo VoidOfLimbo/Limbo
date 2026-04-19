@@ -36,22 +36,26 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | Form Requests (8) | ✅ Done |
 | Controllers (PlannerController, MilestoneController, EventController, TagController, PlannerExportController) | ✅ Done |
 | Routes + Wayfinder generated | ✅ Done |
-| Pest tests — 26 passing (48 assertions) | ✅ Done |
+| Pest tests — 70 passed (193 assertions) | ✅ Done |
 | Seeder (`PlannerSeeder` — all states, edge cases) | ✅ Done |
 | `Planner/Index.vue` page | ✅ Done |
 | `PlannerMilestoneTabs` | ✅ Done |
+| `PlannerMilestoneSelector` (groupBy: quarter/status/priority, collapsible groups, arc progress) | ✅ Done |
 | `PlannerMilestoneHeader` | ✅ Done |
-| `PlannerFilters` | ✅ Done |
-| `PlannerEventList` | ✅ Done |
-| `PlannerEventRow` | ✅ Done |
-| `PlannerEventDrawer` | ✅ Done (missing tag input) |
-| `PlannerMilestoneDrawer` | ✅ Done (missing tag input) |
+| `PlannerMilestoneExplorer` (bottom drawer — browse/search all milestones) | ✅ Done |
+| `PlannerFilters` (redesigned — color-coded pills, active chip bar, mobile-responsive) | ✅ Done |
+| `PlannerEventList` (VueDraggable drag-to-reorder) | ✅ Done |
+| `PlannerEventRow` (drag handle, group context menu) | ✅ Done |
+| `PlannerChildRow` (collapsible nested event row) | ✅ Done |
+| `PlannerEventDrawer` (responsive grid layout, vaul drawer, tags) | ✅ Done |
+| `PlannerMilestoneDrawer` (responsive grid layout, vaul drawer, tags) | ✅ Done |
 | `PlannerSnoozePopover` | ✅ Done |
 | `PlannerContextMenu` | ✅ Done |
 | `PlannerBadge` | ✅ Done |
 | `PlannerTagInput` + tags in drawers | ✅ Done |
 | `PlannerEmptyState` | ✅ Done |
 | Snooze toast confirmation | ✅ Done |
+| Event `sort_order` — drag-to-reorder in list view (`POST /events/reorder`) | ✅ Done |
 
 ---
 
@@ -76,6 +80,9 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `PlannerBoardAddCard` — inline title input at column bottom | ✅ Done |
 | `PlannerBulkActionBar` — bulk delete, clear selection | ✅ Done |
 | View type persisted to `localStorage` via Pinia store | ✅ Done |
+| `PlannerMilestoneSelector` — groupBy compact bar replacing old tab strip | ✅ Done |
+| `PlannerMilestoneExplorer` — bottom vaul-vue drawer, browse + select milestones | ✅ Done |
+| `PlannerChildRow` — collapsible nested event row with chevron toggle | ✅ Done |
 
 ---
 
@@ -130,9 +137,16 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | SPA bridge | Inertia.js (Laravel + Vue) | v3 |
 | Frontend | Vue 3 | 3.x |
 | Styling | Tailwind CSS | v4 |
+| UI components | shadcn-vue (new-york-v4) + reka-ui | v2.6.1 |
+| Drawers | vaul-vue | — |
+| State management | Pinia | — |
+| Drag-and-drop | vue-draggable-plus (SortableJS-based) | v0.6.1 |
+| Data tables | @tanstack/vue-table | v8.21.3 |
+| Toasts | vue-sonner | — |
+| Icons | lucide-vue-next | — |
 | Auth backend | Laravel Fortify | v1 |
 | Social auth | Laravel Socialite | v5 |
-| Typed routes | Laravel Wayfinder | v0 |
+| Typed routes | Laravel Wayfinder | v0 (always use `--with-form`) |
 | Testing | Pest | v4 |
 | Dev server | Laravel Sail | v1 |
 | Code style | Laravel Pint | v1 |
@@ -223,6 +237,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `location` | string | nullable |
 | `snoozed_until` | timestamp | nullable |
 | `snooze_count` | smallint | default 0 |
+| `sort_order` | unsignedInteger | nullable — manual list-view sort order (NULLS LAST, then `start_at`) |
 | `created_at` / `updated_at` | timestamps | |
 | `deleted_at` | timestamp | soft delete |
 
@@ -366,9 +381,24 @@ Powered by **Fortify** (backend) + **Socialite** (OAuth).
 | GET | `/planner/export/ics` | `Planner\PlannerExportController` (named: `planner.export.ics`) |
 | GET | `/planner/export/ics/event/{event}` | `Planner\PlannerExportController` (named: `planner.export.ics.event`) |
 | GET | `/planner/export/ics/milestone/{milestone}` | `Planner\PlannerExportController` (named: `planner.export.ics.milestone`) |
-| GET/POST/PUT/DELETE | `/events`, `/events/{event}`, `/events/{event}/snooze` | `Planner\EventController` |
-| GET/POST/PUT/DELETE | `/milestones`, `/milestones/{milestone}` | `Planner\MilestoneController` |
-| GET/POST/PUT/DELETE | `/tags`, `/tags/{tag}`, `/tags/{tag}/attach`, `/tags/{tag}/detach` | `Planner\TagController` |
+| GET | `/events` | `Planner\EventController@index` (named: `events.index`) |
+| POST | `/events` | `Planner\EventController@store` (named: `events.store`) |
+| POST | `/events/reorder` | `Planner\EventController@reorder` (named: `events.reorder`) |
+| GET | `/events/{event}` | `Planner\EventController@show` (named: `events.show`) |
+| PUT | `/events/{event}` | `Planner\EventController@update` (named: `events.update`) |
+| DELETE | `/events/{event}` | `Planner\EventController@destroy` (named: `events.destroy`) |
+| POST | `/events/{event}/snooze` | `Planner\EventController@snooze` (named: `events.snooze`) |
+| GET | `/milestones` | `Planner\MilestoneController@index` (named: `milestones.index`) |
+| POST | `/milestones` | `Planner\MilestoneController@store` (named: `milestones.store`) |
+| GET | `/milestones/{milestone}` | `Planner\MilestoneController@show` (named: `milestones.show`) |
+| PUT | `/milestones/{milestone}` | `Planner\MilestoneController@update` (named: `milestones.update`) |
+| DELETE | `/milestones/{milestone}` | `Planner\MilestoneController@destroy` (named: `milestones.destroy`) |
+| GET | `/tags` | `Planner\TagController@index` (named: `tags.index`) |
+| POST | `/tags` | `Planner\TagController@store` (named: `tags.store`) |
+| PUT | `/tags/{tag}` | `Planner\TagController@update` (named: `tags.update`) |
+| DELETE | `/tags/{tag}` | `Planner\TagController@destroy` (named: `tags.destroy`) |
+| POST | `/tags/{tag}/attach` | `Planner\TagController@attach` (named: `tags.attach`) |
+| DELETE | `/tags/{tag}/detach` | `Planner\TagController@detach` (named: `tags.detach`) |
 
 Fortify registers its own auth routes (login, register, logout, password, 2FA, email verify).
 
@@ -447,18 +477,29 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 ### Life Planner components (`resources/js/components/planner/`)
 | Component | Status | Purpose |
 |---|---|---|
-| `PlannerMilestoneTabs.vue` | ✅ Done | Horizontal tab strip for milestone switching + Backlog tab |
+| `PlannerMilestoneTabs.vue` | ✅ Done | Legacy horizontal tab strip (superseded by `PlannerMilestoneSelector`) |
+| `PlannerMilestoneSelector.vue` | ✅ Done | Compact bar with Popover; groupBy (quarter/status/priority), collapsible groups, arc progress ring |
 | `PlannerMilestoneHeader.vue` | ✅ Done | Milestone band — title, progress bar, deadline badge, breach warning |
-| `PlannerFilters.vue` | ✅ Done | Collapsible filter panel — status, priority, tags, date range, snoozed toggle |
-| `PlannerEventList.vue` | ✅ Done | Paginated event list with deferred-prop skeleton state |
-| `PlannerEventRow.vue` | ✅ Done | Single event row — badges, dates, snooze indicator |
-| `PlannerEventDrawer.vue` | ✅ Done | Right-side sheet for create/edit event (missing tag input) |
-| `PlannerMilestoneDrawer.vue` | ✅ Done | Right-side sheet for create/edit milestone (missing tag input) |
+| `PlannerMilestoneExplorer.vue` | ✅ Done | Bottom vaul-vue drawer — full milestone browser with search and select |
+| `PlannerFilters.vue` | ✅ Done | Collapsible filter panel — color-coded pills, active chip bar, mobile-responsive (separators hidden on mobile) |
+| `PlannerEventList.vue` | ✅ Done | Paginated event list with VueDraggable drag-to-reorder; deferred-prop skeleton state |
+| `PlannerEventRow.vue` | ✅ Done | Single event row — drag handle (GripVertical), badges, dates, snooze indicator, context menu |
+| `PlannerChildRow.vue` | ✅ Done | Collapsible nested event row with chevron toggle |
+| `PlannerEventDrawer.vue` | ✅ Done | Bottom vaul-vue drawer for create/edit event; responsive grid layout (4 rows), snap points |
+| `PlannerMilestoneDrawer.vue` | ✅ Done | Bottom vaul-vue drawer for create/edit milestone; responsive grid layout (4 rows), snap points |
 | `PlannerSnoozePopover.vue` | ✅ Done | Snooze preset picker |
-| `PlannerContextMenu` | ❌ TODO | ⋮ / right-click menu — edit, snooze, move to backlog, delete |
-| `PlannerBadge` | ❌ TODO | Owned badge for status, priority, type, breach |
-| `PlannerTagInput` | ❌ TODO | Multi-select tag picker + inline create |
-| `PlannerEmptyState` | ❌ TODO | Empty state illustration + CTA |
+| `PlannerContextMenu.vue` | ✅ Done | ⋮ / right-click menu — edit, snooze, move to backlog, delete |
+| `PlannerBadge.vue` | ✅ Done | Owned badge for status, priority, type, breach |
+| `PlannerTagInput.vue` | ✅ Done | Multi-select tag picker + inline create |
+| `PlannerEmptyState.vue` | ✅ Done | Empty state illustration + CTA |
+| `PlannerViewSwitcher.vue` | ✅ Done | List / Table / Board switcher; view persisted in Pinia + localStorage |
+| `PlannerTableView.vue` | ✅ Done | TanStack Table (FlexRender, sorting, column resize) |
+| `PlannerFieldCell.vue` | ✅ Done | Inline editing cell for table title field |
+| `PlannerBoardView.vue` | ✅ Done | VueDraggable kanban — cross-column event drag |
+| `PlannerBoardColumn.vue` | ✅ Done | Droppable zone per status |
+| `PlannerBoardCard.vue` | ✅ Done | Draggable card — priority/type badges, date range, tags |
+| `PlannerBoardAddCard.vue` | ✅ Done | Inline title input at column bottom |
+| `PlannerBulkActionBar.vue` | ✅ Done | Bulk delete + clear selection |
 
 ---
 

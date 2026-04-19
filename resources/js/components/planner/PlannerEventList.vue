@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { VueDraggable } from 'vue-draggable-plus'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
 import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
+import { reorder as reorderEvents } from '@/actions/App/Http/Controllers/Planner/EventController'
 import type { PaginatedData, PlannerEvent } from '@/types/planner'
 
 const props = defineProps<{
@@ -19,6 +23,36 @@ const emit = defineEmits<{
     duplicate: [event: PlannerEvent]
     loadMore: []
 }>()
+
+// ── Drag-to-reorder ──────────────────────────────────────────────────────────
+const localEvents = ref<PlannerEvent[]>([])
+const isDragging = ref(false)
+
+watch(
+    () => props.events?.data,
+    (data) => {
+        if (isDragging.value) return
+        nextTick(() => { localEvents.value = data ? [...data] : [] })
+    },
+    { immediate: true },
+)
+
+function onStart() {
+    isDragging.value = true
+}
+
+function onEnd() {
+    isDragging.value = false
+    const ids = localEvents.value.map((e) => e.id)
+    const def = reorderEvents()
+    router.visit(def.url, {
+        method: def.method,
+        data: { ids },
+        preserveScroll: true,
+        preserveState: true,
+        only: [],
+    })
+}
 </script>
 
 <template>
@@ -34,19 +68,29 @@ const emit = defineEmits<{
             </div>
         </template>
 
-        <!-- Event rows -->
+        <!-- Event rows (draggable) -->
         <template v-else-if="events.data.length">
-            <PlannerEventRow
-                v-for="event in events.data"
-                :key="event.id"
-                :event="event"
-                :show-milestone="showMilestone"
-                @edit="emit('edit', $event)"
-                @snooze="emit('snooze', $event)"
-                @delete="emit('delete', $event)"
-                @toggle-status="emit('toggleStatus', $event)"
-                @duplicate="emit('duplicate', $event)"
-            />
+            <VueDraggable
+                v-model="localEvents"
+                handle=".drag-handle"
+                ghost-class="opacity-30"
+                animation="150"
+                class="flex flex-col"
+                @start="onStart"
+                @end="onEnd"
+            >
+                <PlannerEventRow
+                    v-for="event in localEvents"
+                    :key="event.id"
+                    :event="event"
+                    :show-milestone="showMilestone"
+                    @edit="emit('edit', $event)"
+                    @snooze="emit('snooze', $event)"
+                    @delete="emit('delete', $event)"
+                    @toggle-status="emit('toggleStatus', $event)"
+                    @duplicate="emit('duplicate', $event)"
+                />
+            </VueDraggable>
 
             <!-- Load more (pagination) -->
             <div v-if="events.next_page_url" class="flex justify-center py-4">

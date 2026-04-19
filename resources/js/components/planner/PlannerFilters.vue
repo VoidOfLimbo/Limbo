@@ -244,8 +244,8 @@ const activeChips = computed<ActiveChip[]>(() => {
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="self-stretch border-l border-border/40 shrink-0" />
+            <!-- Separator (desktop only) -->
+            <div class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
 
             <!-- Priority -->
             <div class="shrink-0">
@@ -263,8 +263,8 @@ const activeChips = computed<ActiveChip[]>(() => {
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div v-if="tags.length" class="self-stretch border-l border-border/40 shrink-0" />
+            <!-- Separator (desktop only) -->
+            <div v-if="tags.length" class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
 
             <!-- Tags -->
             <div v-if="tags.length" class="shrink-0 max-w-90">
@@ -292,14 +292,14 @@ const activeChips = computed<ActiveChip[]>(() => {
                 </div>
             </div>
 
-            <!-- Separator -->
-            <div class="self-stretch border-l border-border/40 shrink-0" />
+            <!-- Separator (desktop only) -->
+            <div class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
 
             <!-- Date range + Snoozed -->
             <div class="shrink-0 flex flex-col gap-2.5">
                 <div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Date range</p>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
                         <input
                             v-model="dateFrom"
                             type="date"

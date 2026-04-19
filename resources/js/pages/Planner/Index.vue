@@ -204,7 +204,7 @@ function loadMore() {
 
         <!-- Backlog header (no active milestone) -->
         <div v-else class="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-            <h2 class="text-sm font-semibold text-muted-foreground">Backlog — events without a milestone</h2>
+            <h2 class="hidden sm:block text-sm font-semibold text-muted-foreground">Backlog — events without a milestone</h2>
             <Button variant="outline" size="sm" class="h-7 gap-1.5" @click="openCreateEvent">
                 <span class="text-xs">Add event</span>
             </Button>

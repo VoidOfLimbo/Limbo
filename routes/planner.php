@@ -25,6 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
     Route::post('/events/{event}/snooze', [EventController::class, 'snooze'])->name('events.snooze');
+    Route::post('/events/reorder', [EventController::class, 'reorder'])->name('events.reorder');
 
     // Tags
     Route::get('/tags', [TagController::class, 'index'])->name('tags.index');

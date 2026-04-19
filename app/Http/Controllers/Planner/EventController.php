@@ -81,6 +81,19 @@ class EventController extends Controller
         return back();
     }
 
+    public function reorder(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
+
+        foreach ($data['ids'] as $order => $id) {
+            Event::where('id', $id)
+                ->where('user_id', $request->user()->id)
+                ->update(['sort_order' => $order]);
+        }
+
+        return back();
+    }
+
     private function recalculateMilestoneIfNeeded(Event $event): void
     {
         if (! $event->milestone_id) {

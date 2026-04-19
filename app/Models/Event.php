@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'type', 'status', 'priority', 'start_at', 'end_at', 'is_all_day',
     'is_milestone_marker', 'recurrence_rule', 'recurrence_ends_at',
     'recurrence_count', 'visibility', 'color', 'location',
-    'snoozed_until', 'snooze_count',
+    'snoozed_until', 'snooze_count', 'sort_order',
 ])]
 class Event extends Model
 {

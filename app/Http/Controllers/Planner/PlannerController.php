@@ -56,6 +56,7 @@ class PlannerController extends Controller
                     ->orderBy('start_at'),
             ])
             ->whereNull('parent_event_id')
+            ->orderByRaw('sort_order ASC NULLS LAST')
             ->orderBy('start_at');
 
         if ($milestoneId) {
