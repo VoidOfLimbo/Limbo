@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AlertTriangle, Clock, Edit2, Plus, Lock } from 'lucide-vue-next'
+import { AlertTriangle, Clock, Edit2, Plus, Lock, CheckCircle2 } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { PlannerMilestone } from '@/types/planner'
 
 const props = defineProps<{
@@ -49,73 +50,97 @@ const progressBarColor = computed(() => {
 
 <template>
     <div
-        class="flex flex-col gap-3 px-4 py-3 border-b border-border bg-card/50"
+        class="relative flex items-center gap-3 px-4 py-2.5 border-b border-border bg-card/50 shrink-0"
         :style="milestone.color ? { borderLeftColor: milestone.color, borderLeftWidth: '3px' } : {}"
     >
-        <!-- Top row: title + actions -->
-        <div class="flex items-start gap-3">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <h2 class="text-base font-semibold truncate">{{ milestone.title }}</h2>
-                    <Badge :variant="statusVariant" class="capitalize text-[11px]">{{ milestone.status }}</Badge>
-                    <span v-if="milestone.deadline_type === 'hard'" class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Lock class="size-3" />
-                        Hard deadline
-                    </span>
-                </div>
+        <!-- Title + status + flags -->
+        <div class="flex-1 min-w-0 flex items-center gap-2">
+            <h2 class="text-sm font-semibold truncate">{{ milestone.title }}</h2>
+            <Badge :variant="statusVariant" class="capitalize text-[10px] h-5 px-1.5 shrink-0">{{ milestone.status }}</Badge>
 
-                <!-- Breach warning -->
-                <div
-                    v-if="milestone.is_breached"
-                    class="mt-1 flex items-center gap-1.5 text-xs text-destructive font-medium"
-                >
-                    <AlertTriangle class="size-3.5" />
-                    An event exceeds the deadline — adjust events or convert to soft deadline.
-                </div>
-            </div>
+            <Tooltip v-if="milestone.deadline_type === 'hard'">
+                <TooltipTrigger as-child>
+                    <Lock class="size-3 shrink-0 text-muted-foreground/50 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>Hard deadline — events cannot exceed this date</TooltipContent>
+            </Tooltip>
 
-            <div class="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon-sm" title="Edit milestone" @click="emit('edit', milestone)">
-                    <Edit2 class="size-3.5" />
-                </Button>
-                <Button variant="outline" size="sm" class="gap-1.5 h-7" @click="emit('createEvent')">
-                    <Plus class="size-3.5" />
-                    Add event
-                </Button>
-            </div>
+            <Tooltip v-if="milestone.is_breached">
+                <TooltipTrigger as-child>
+                    <AlertTriangle class="size-3.5 shrink-0 text-destructive cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>An event exceeds this deadline. Adjust events or convert to a soft deadline.</TooltipContent>
+            </Tooltip>
         </div>
 
-        <!-- Progress + meta row -->
-        <div class="flex items-center gap-4">
-            <!-- Progress bar -->
-            <div class="flex-1 flex items-center gap-2">
-                <div class="flex-1 h-1.5 rounded-full bg-primary/10 overflow-hidden">
-                    <div
-                        class="h-full rounded-full transition-all duration-500"
-                        :class="progressBarColor"
-                        :style="{ width: `${Math.min(milestone.progress, 100)}%` }"
-                    />
-                </div>
-                <span class="text-xs tabular-nums text-muted-foreground shrink-0 w-10 text-right">
-                    {{ milestone.progress }}%
-                </span>
-            </div>
+        <!-- Stats -->
+        <div class="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <span
+                        class="tabular-nums font-medium cursor-help w-8 text-right"
+                        :class="{ 'text-destructive': milestone.is_breached }"
+                    >
+                        {{ milestone.progress }}%
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>{{ milestone.progress_source === 'manual' ? 'Manual' : 'Derived' }} progress</TooltipContent>
+            </Tooltip>
 
-            <!-- Events count -->
-            <span class="text-xs text-muted-foreground shrink-0">
-                {{ milestone.completed_events_count }}/{{ milestone.total_events_count }} events
-            </span>
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <span class="flex items-center gap-1 cursor-help">
+                        <CheckCircle2 class="size-3" />
+                        {{ milestone.completed_events_count }}/{{ milestone.total_events_count }}
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>{{ milestone.completed_events_count }} of {{ milestone.total_events_count }} events completed</TooltipContent>
+            </Tooltip>
 
-            <!-- Deadline -->
-            <div v-if="deadlineLabel" class="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                <Clock class="size-3" />
-                <span :class="{ 'text-destructive font-medium': milestone.is_breached }">{{ deadlineLabel }}</span>
-            </div>
+            <Tooltip v-if="deadlineLabel">
+                <TooltipTrigger as-child>
+                    <span
+                        class="flex items-center gap-1 cursor-help"
+                        :class="{ 'text-destructive font-medium': milestone.is_breached }"
+                    >
+                        <Clock class="size-3" />
+                        {{ deadlineLabel }}
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>{{ milestone.deadline_type === 'hard' ? 'Hard' : 'Soft' }} deadline</TooltipContent>
+            </Tooltip>
 
-            <!-- Priority -->
-            <span class="text-xs capitalize shrink-0" :class="priorityClass">
-                {{ milestone.priority }}
-            </span>
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <span class="capitalize cursor-help" :class="priorityClass">{{ milestone.priority }}</span>
+                </TooltipTrigger>
+                <TooltipContent>Priority</TooltipContent>
+            </Tooltip>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-1 shrink-0">
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <Button variant="ghost" size="icon-sm" @click="emit('edit', milestone)">
+                        <Edit2 class="size-3.5" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit milestone</TooltipContent>
+            </Tooltip>
+            <Button variant="outline" size="sm" class="h-7 gap-1 text-xs" @click="emit('createEvent')">
+                <Plus class="size-3.5" />
+                Add event
+            </Button>
+        </div>
+
+        <!-- Progress strip at the very bottom -->
+        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary/10">
+            <div
+                class="h-full transition-all duration-500"
+                :class="progressBarColor"
+                :style="{ width: `${Math.min(milestone.progress, 100)}%` }"
+            />
         </div>
     </div>
 </template>
