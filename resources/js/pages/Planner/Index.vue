@@ -4,7 +4,8 @@ import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { toast } from 'vue-sonner'
 import { planner as plannerRoute } from '@/routes'
-import PlannerMilestoneTabs from '@/components/planner/PlannerMilestoneTabs.vue'
+import PlannerMilestoneSelector from '@/components/planner/PlannerMilestoneSelector.vue'
+import PlannerMilestoneExplorer from '@/components/planner/PlannerMilestoneExplorer.vue'
 import PlannerMilestoneHeader from '@/components/planner/PlannerMilestoneHeader.vue'
 import PlannerFilters from '@/components/planner/PlannerFilters.vue'
 import PlannerEventList from '@/components/planner/PlannerEventList.vue'
@@ -64,6 +65,9 @@ function openEditEvent(event: PlannerEvent) {
     editingEvent.value = event
     eventDrawerOpen.value = true
 }
+
+// ── Milestone explorer drawer ─────────────────────────────────────────────────
+const milestoneExplorerOpen = ref(false)
 
 // ── Milestone drawer ─────────────────────────────────────────────────────────
 const milestoneDrawerOpen = ref(false)
@@ -181,12 +185,13 @@ function loadMore() {
     <!-- Full-height flex column inside the app layout content area -->
     <div class="flex flex-col h-full overflow-hidden">
 
-        <!-- Milestone tabs -->
-        <PlannerMilestoneTabs
+        <!-- Milestone selector bar -->
+        <PlannerMilestoneSelector
             :milestones="milestones"
             :active-milestone-id="activeMilestoneId"
             :current-filters="currentFilters"
             @create-milestone="openCreateMilestone"
+            @open-explorer="milestoneExplorerOpen = true"
         />
 
         <!-- Active milestone header -->
@@ -205,19 +210,17 @@ function loadMore() {
             </Button>
         </div>
 
-        <!-- Filters + view switcher bar -->
-        <div class="flex items-center gap-2 border-b border-border px-4 py-2 shrink-0">
-            <div class="flex-1">
-                <PlannerFilters
-                    :filters="filters"
-                    :tags="tags ?? []"
-                    :is-active="hasActiveFilters(filters)"
-                    @change="applyFilters"
-                    @clear="clearFilters"
-                />
-            </div>
-            <PlannerViewSwitcher />
-        </div>
+        <!-- Filters + view switcher -->
+        <PlannerFilters
+            :filters="filters"
+            :tags="tags ?? []"
+            :is-active="hasActiveFilters(filters)"
+            @change="applyFilters"
+        >
+            <template #trailing>
+                <PlannerViewSwitcher />
+            </template>
+        </PlannerFilters>
 
         <!-- Viewport (swaps based on active view) -->
         <PlannerEventList
@@ -274,6 +277,15 @@ function loadMore() {
         v-model:open="milestoneDrawerOpen"
         :milestone="editingMilestone"
         :tags="tags ?? []"
+    />
+
+    <!-- Milestone explorer -->
+    <PlannerMilestoneExplorer
+        v-model:open="milestoneExplorerOpen"
+        :milestones="milestones"
+        :active-milestone-id="activeMilestoneId"
+        :current-filters="currentFilters"
+        @create-milestone="milestoneExplorerOpen = false; openCreateMilestone()"
     />
 
     <!-- Snooze popover (rendered as a modal overlay for simplicity) -->

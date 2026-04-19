@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { X } from 'lucide-vue-next'
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-    SheetFooter,
-    SheetClose,
-} from '@/components/ui/sheet'
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerFooter,
+    DrawerClose,
+} from '@/components/ui/drawer'
 import {
     Select,
     SelectContent,
@@ -137,39 +138,45 @@ function submit() {
 </script>
 
 <template>
-    <Sheet :open="open" @update:open="emit('update:open', $event)">
-        <SheetContent side="right" class="w-full sm:max-w-[480px] overflow-y-auto flex flex-col gap-0 p-0">
-            <SheetHeader class="px-6 py-4 border-b border-border shrink-0">
-                <SheetTitle>{{ isEdit() ? 'Edit event' : 'New event' }}</SheetTitle>
-                <SheetDescription class="sr-only">{{ isEdit() ? 'Edit event details' : 'Create a new event' }}</SheetDescription>
-            </SheetHeader>
+    <Drawer :open="open" direction="bottom" @update:open="emit('update:open', $event)">
+        <DrawerContent class="h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
+            <DrawerHeader class="flex-row items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                <DrawerTitle class="text-base">{{ isEdit() ? 'Edit event' : 'New event' }}</DrawerTitle>
+                <DrawerDescription class="sr-only">{{ isEdit() ? 'Edit event details' : 'Create a new event' }}</DrawerDescription>
+                <DrawerClose as-child>
+                    <Button variant="ghost" size="icon" class="size-8 shrink-0 text-muted-foreground hover:text-foreground">
+                        <X class="size-4" />
+                    </Button>
+                </DrawerClose>
+            </DrawerHeader>
 
-            <form class="flex flex-col gap-5 px-6 py-5 flex-1 overflow-y-auto" @submit.prevent="submit">
-                <!-- Title -->
-                <div class="space-y-1.5">
-                    <Label for="evt-title">Title <span class="text-destructive">*</span></Label>
-                    <Input id="evt-title" v-model="form.title" placeholder="What needs to happen?" autofocus />
-                    <p v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</p>
+            <form class="flex flex-col gap-5 px-6 py-5 flex-1 min-h-0 overflow-y-auto" @submit.prevent="submit">
+
+                <!-- Row 1: Title + Description -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <Label for="evt-title">Title <span class="text-destructive">*</span></Label>
+                        <Input id="evt-title" v-model="form.title" placeholder="What needs to happen?" autofocus />
+                        <p v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label for="evt-desc">Description</Label>
+                        <textarea
+                            id="evt-desc"
+                            v-model="form.description"
+                            rows="2"
+                            placeholder="Optional details…"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                        />
+                    </div>
                 </div>
 
-                <!-- Description -->
-                <div class="space-y-1.5">
-                    <Label for="evt-desc">Description</Label>
-                    <textarea
-                        id="evt-desc"
-                        v-model="form.description"
-                        rows="3"
-                        placeholder="Optional details…"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                    />
-                </div>
-
-                <!-- Type / Status / Priority -->
-                <div class="grid grid-cols-3 gap-3">
+                <!-- Row 2: Type / Status / Priority / Milestone -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div class="space-y-1.5">
                         <Label>Type</Label>
                         <Select v-model="form.type">
-                            <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="event">Event</SelectItem>
                                 <SelectItem value="task">Task</SelectItem>
@@ -180,7 +187,7 @@ function submit() {
                     <div class="space-y-1.5">
                         <Label>Status</Label>
                         <Select v-model="form.status">
-                            <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="draft">Draft</SelectItem>
                                 <SelectItem value="upcoming">Upcoming</SelectItem>
@@ -195,7 +202,7 @@ function submit() {
                     <div class="space-y-1.5">
                         <Label>Priority</Label>
                         <Select v-model="form.priority">
-                            <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="critical">Critical</SelectItem>
                                 <SelectItem value="high">High</SelectItem>
@@ -204,99 +211,109 @@ function submit() {
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
-
-                <!-- Milestone -->
-                <div class="space-y-1.5">
-                    <Label>Milestone</Label>
-                    <Select v-model="form.milestone_id">
-                        <SelectTrigger class="h-8 text-xs"><SelectValue placeholder="Backlog (no milestone)" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">Backlog (no milestone)</SelectItem>
-                            <SelectItem v-for="m in milestones" :key="m.id" :value="m.id">{{ m.title }}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <!-- Dates -->
-                <div class="space-y-1.5">
-                    <div class="flex items-center gap-3">
-                        <Label class="shrink-0">All day</Label>
-                        <input v-model="form.is_all_day" type="checkbox" class="rounded" />
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-1">
-                            <Label for="evt-start" class="text-xs">Start</Label>
-                            <input
-                                id="evt-start"
-                                v-model="form.start_at"
-                                :type="form.is_all_day ? 'date' : 'datetime-local'"
-                                class="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            />
-                            <p v-if="errors.start_at" class="text-xs text-destructive">{{ errors.start_at }}</p>
-                        </div>
-                        <div class="space-y-1">
-                            <Label for="evt-end" class="text-xs">End</Label>
-                            <input
-                                id="evt-end"
-                                v-model="form.end_at"
-                                :type="form.is_all_day ? 'date' : 'datetime-local'"
-                                class="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            />
-                            <p v-if="errors.end_at" class="text-xs text-destructive">{{ errors.end_at }}</p>
-                        </div>
+                    <div class="space-y-1.5">
+                        <Label>Milestone</Label>
+                        <Select v-model="form.milestone_id">
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue placeholder="Backlog" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">Backlog (no milestone)</SelectItem>
+                                <SelectItem v-for="m in milestones" :key="m.id" :value="m.id">{{ m.title }}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
-                <!-- Location -->
-                <div class="space-y-1.5">
-                    <Label for="evt-location">Location</Label>
-                    <Input id="evt-location" v-model="form.location" placeholder="Optional location" class="h-8 text-sm" />
+                <!-- Row 3: All day toggle + Start + End + Location -->
+                <div class="grid grid-cols-1 sm:grid-cols-[auto_1fr_1fr_1fr] gap-4 items-end">
+                    <!-- All day toggle -->
+                    <div class="space-y-1.5">
+                        <Label class="text-xs">All day</Label>
+                        <button
+                            type="button"
+                            class="flex items-center gap-2 h-8 px-3 rounded-md border text-xs font-medium transition-colors"
+                            :class="form.is_all_day ? 'bg-primary/10 border-primary/40 text-primary' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'"
+                            @click="form.is_all_day = !form.is_all_day"
+                        >
+                            <span
+                                class="inline-flex size-3.5 items-center justify-center rounded border transition-colors shrink-0"
+                                :class="form.is_all_day ? 'bg-primary border-primary' : 'border-current'"
+                            >
+                                <svg v-if="form.is_all_day" viewBox="0 0 10 10" class="size-2.5 text-primary-foreground" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1.5 5l2.5 2.5 4.5-4" />
+                                </svg>
+                            </span>
+                            All day
+                        </button>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label for="evt-start" class="text-xs">Start</Label>
+                        <input
+                            id="evt-start"
+                            v-model="form.start_at"
+                            :type="form.is_all_day ? 'date' : 'datetime-local'"
+                            class="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <p v-if="errors.start_at" class="text-xs text-destructive">{{ errors.start_at }}</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label for="evt-end" class="text-xs">End</Label>
+                        <input
+                            id="evt-end"
+                            v-model="form.end_at"
+                            :type="form.is_all_day ? 'date' : 'datetime-local'"
+                            class="w-full h-8 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        />
+                        <p v-if="errors.end_at" class="text-xs text-destructive">{{ errors.end_at }}</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label for="evt-location" class="text-xs">Location</Label>
+                        <Input id="evt-location" v-model="form.location" placeholder="Optional" class="h-8 text-xs" />
+                    </div>
                 </div>
 
-                <!-- Tags -->
-                <div class="space-y-1.5">
-                    <Label>Tags</Label>
-                    <PlannerTagInput
-                        v-model="form.tag_ids"
-                        :tags="localTags"
-                        @create="async (name) => {
-                            const def = storeTag()
-                            const res = await fetch(def.url, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
-                                body: JSON.stringify({ name }),
-                            })
-                            if (res.ok) {
-                                const tag = await res.json()
-                                localTags.value = [...localTags.value, tag]
-                                form.tag_ids = [...form.tag_ids, tag.id]
-                            }
-                        }"
-                    />
-                </div>
-
-                <!-- Visibility -->
-                <div class="space-y-1.5">
-                    <Label>Visibility</Label>
-                    <Select v-model="form.visibility">
-                        <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="private">Private</SelectItem>
-                            <SelectItem value="shared">Shared</SelectItem>
-                        </SelectContent>
-                    </Select>
+                <!-- Row 4: Tags + Visibility -->
+                <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-start">
+                    <div class="space-y-1.5">
+                        <Label>Tags</Label>
+                        <PlannerTagInput
+                            v-model="form.tag_ids"
+                            :tags="localTags"
+                            @create="async (name) => {
+                                const def = storeTag()
+                                const res = await fetch(def.url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
+                                    body: JSON.stringify({ name }),
+                                })
+                                if (res.ok) {
+                                    const tag = await res.json()
+                                    localTags.value = [...localTags.value, tag]
+                                    form.tag_ids = [...form.tag_ids, tag.id]
+                                }
+                            }"
+                        />
+                    </div>
+                    <div class="space-y-1.5 min-w-32">
+                        <Label>Visibility</Label>
+                        <Select v-model="form.visibility">
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="private">Private</SelectItem>
+                                <SelectItem value="shared">Shared</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </form>
 
-            <SheetFooter class="px-6 py-4 border-t border-border shrink-0">
-                <SheetClose as-child>
+            <DrawerFooter class="px-6 py-4 border-t border-border shrink-0 flex flex-row gap-2 justify-end">
+                <DrawerClose as-child>
                     <Button variant="outline" type="button">Cancel</Button>
-                </SheetClose>
+                </DrawerClose>
                 <Button type="button" :disabled="processing || !form.title.trim()" @click="submit">
                     {{ isEdit() ? 'Save changes' : 'Create event' }}
                 </Button>
-            </SheetFooter>
-        </SheetContent>
-    </Sheet>
+            </DrawerFooter>
+        </DrawerContent>
+    </Drawer>
 </template>

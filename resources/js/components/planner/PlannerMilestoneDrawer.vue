@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { X } from 'lucide-vue-next'
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-    SheetFooter,
-    SheetClose,
-} from '@/components/ui/sheet'
+    Drawer,
+    DrawerContent,
+    DrawerDescription,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerFooter,
+    DrawerClose,
+} from '@/components/ui/drawer'
 import {
     Select,
     SelectContent,
@@ -132,22 +133,50 @@ function submit() {
 </script>
 
 <template>
-    <Sheet :open="open" @update:open="emit('update:open', $event)">
-        <SheetContent side="right" class="w-full sm:max-w-[480px] overflow-y-auto flex flex-col gap-0 p-0">
-            <SheetHeader class="px-6 py-4 border-b border-border shrink-0">
-                <SheetTitle>{{ isEdit() ? 'Edit milestone' : 'New milestone' }}</SheetTitle>
-                <SheetDescription class="sr-only">{{ isEdit() ? 'Edit milestone details' : 'Create a new milestone' }}</SheetDescription>
-            </SheetHeader>
+    <Drawer :open="open" direction="bottom" @update:open="emit('update:open', $event)">
+        <DrawerContent class="h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
+            <DrawerHeader class="flex-row items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                <DrawerTitle class="text-base">{{ isEdit() ? 'Edit milestone' : 'New milestone' }}</DrawerTitle>
+                <DrawerDescription class="sr-only">{{ isEdit() ? 'Edit milestone details' : 'Create a new milestone' }}</DrawerDescription>
+                <DrawerClose as-child>
+                    <Button variant="ghost" size="icon" class="size-8 shrink-0 text-muted-foreground hover:text-foreground">
+                        <X class="size-4" />
+                    </Button>
+                </DrawerClose>
+            </DrawerHeader>
 
-            <form class="flex flex-col gap-5 px-6 py-5 flex-1 overflow-y-auto" @submit.prevent="submit">
-                <!-- Title -->
-                <div class="space-y-1.5">
-                    <Label for="ms-title">Title <span class="text-destructive">*</span></Label>
-                    <Input id="ms-title" v-model="form.title" placeholder="e.g. Launch my freelance business" autofocus />
-                    <p v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</p>
+            <form class="flex flex-col gap-5 px-6 py-5 flex-1 min-h-0 overflow-y-auto" @submit.prevent="submit">
+
+                <!-- Row 1: Title (1/4) + Tags (3/4) -->
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_3fr] gap-4 items-start">
+                    <div class="space-y-1.5">
+                        <Label for="ms-title">Title <span class="text-destructive">*</span></Label>
+                        <Input id="ms-title" v-model="form.title" placeholder="e.g. Launch my freelance business" autofocus />
+                        <p v-if="errors.title" class="text-xs text-destructive">{{ errors.title }}</p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label>Tags</Label>
+                        <PlannerTagInput
+                            v-model="form.tag_ids"
+                            :tags="localTags"
+                            @create="async (name) => {
+                                const def = storeTag()
+                                const res = await fetch(def.url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
+                                    body: JSON.stringify({ name }),
+                                })
+                                if (res.ok) {
+                                    const tag = await res.json()
+                                    localTags.value = [...localTags.value, tag]
+                                    form.tag_ids = [...form.tag_ids, tag.id]
+                                }
+                            }"
+                        />
+                    </div>
                 </div>
 
-                <!-- Description -->
+                <!-- Row 2: Description (full width) -->
                 <div class="space-y-1.5">
                     <Label for="ms-desc">Description</Label>
                     <textarea
@@ -159,12 +188,12 @@ function submit() {
                     />
                 </div>
 
-                <!-- Status / Priority -->
-                <div class="grid grid-cols-2 gap-3">
+                <!-- Row 3: Status / Priority / Deadline type / Visibility (4 cols) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="space-y-1.5">
                         <Label>Status</Label>
                         <Select v-model="form.status">
-                            <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="active">Active</SelectItem>
                                 <SelectItem value="completed">Completed</SelectItem>
@@ -177,7 +206,7 @@ function submit() {
                     <div class="space-y-1.5">
                         <Label>Priority</Label>
                         <Select v-model="form.priority">
-                            <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="critical">Critical</SelectItem>
                                 <SelectItem value="high">High</SelectItem>
@@ -186,39 +215,45 @@ function submit() {
                             </SelectContent>
                         </Select>
                     </div>
+                    <div class="space-y-1.5">
+                        <Label>Deadline type</Label>
+                        <Select v-model="form.deadline_type" :disabled="isEdit() && milestone?.deadline_type === 'hard' && !!milestone?.end_at">
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="soft">Soft</SelectItem>
+                                <SelectItem value="hard">Hard</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p class="text-[11px] text-muted-foreground leading-snug">
+                            <template v-if="form.deadline_type === 'hard'">Locked — end date cannot extend.</template>
+                            <template v-else>Extends automatically with child events.</template>
+                        </p>
+                    </div>
+                    <div class="space-y-1.5">
+                        <Label>Visibility</Label>
+                        <Select v-model="form.visibility">
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="private">Private</SelectItem>
+                                <SelectItem value="shared">Shared</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
-                <!-- Deadline type -->
-                <div class="space-y-1.5">
-                    <Label>Deadline type</Label>
-                    <Select v-model="form.deadline_type" :disabled="isEdit() && milestone?.deadline_type === 'hard' && !!milestone?.end_at">
-                        <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="soft">Soft — extends with child events</SelectItem>
-                            <SelectItem value="hard">Hard — locked deadline</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <p class="text-[11px] text-muted-foreground">
-                        <template v-if="form.deadline_type === 'hard'">Hard deadlines cannot be extended. The end date is locked once set.</template>
-                        <template v-else>Soft deadlines automatically extend when child events grow beyond them.</template>
-                    </p>
-                </div>
-
-                <!-- Duration source -->
-                <div class="space-y-1.5">
-                    <Label>Date range</Label>
-                    <Select v-model="form.duration_source">
-                        <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="derived">Derived from events</SelectItem>
-                            <SelectItem value="manual">Manual</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <!-- Dates (always shown for hard deadline; shown for manual; informational for derived) -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="space-y-1">
+                <!-- Row 4: Date source / Start / End / Color (4 cols) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                    <div class="space-y-1.5">
+                        <Label>Date range</Label>
+                        <Select v-model="form.duration_source">
+                            <SelectTrigger class="h-8 text-xs w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="derived">Derived from events</SelectItem>
+                                <SelectItem value="manual">Manual</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div class="space-y-1.5">
                         <Label for="ms-start" class="text-xs">Start date</Label>
                         <input
                             id="ms-start"
@@ -229,7 +264,7 @@ function submit() {
                         />
                         <p v-if="errors.start_at" class="text-xs text-destructive">{{ errors.start_at }}</p>
                     </div>
-                    <div class="space-y-1">
+                    <div class="space-y-1.5">
                         <Label for="ms-end" class="text-xs">
                             End date
                             <span v-if="form.deadline_type === 'hard'" class="text-destructive">*</span>
@@ -243,82 +278,44 @@ function submit() {
                         />
                         <p v-if="errors.end_at" class="text-xs text-destructive">{{ errors.end_at }}</p>
                     </div>
-                </div>
-
-                <!-- Color -->
-                <div class="space-y-1.5">
-                    <Label for="ms-color">Color</Label>
-                    <div class="flex items-center gap-2">
-                        <input
-                            id="ms-color"
-                            :value="form.color || '#3b82f6'"
-                            type="color"
-                            class="h-8 w-12 rounded border border-input cursor-pointer bg-background"
-                            @input="form.color = ($event.target as HTMLInputElement).value"
-                        />
-                        <Input
-                            v-model="form.color"
-                            placeholder="#3b82f6"
-                            class="h-8 text-xs font-mono"
-                            maxlength="7"
-                        />
-                        <Button
-                            v-if="form.color"
-                            variant="ghost"
-                            size="sm"
-                            class="h-8 px-2 text-xs text-muted-foreground"
-                            type="button"
-                            @click="form.color = ''"
-                        >
-                            Clear
-                        </Button>
+                    <div class="space-y-1.5">
+                        <Label for="ms-color">Color</Label>
+                        <div class="flex items-center gap-2">
+                            <input
+                                id="ms-color"
+                                :value="form.color || '#3b82f6'"
+                                type="color"
+                                class="h-8 w-10 rounded border border-input cursor-pointer bg-background shrink-0"
+                                @input="form.color = ($event.target as HTMLInputElement).value"
+                            />
+                            <Input
+                                v-model="form.color"
+                                placeholder="#3b82f6"
+                                class="h-8 text-xs font-mono flex-1 min-w-0"
+                                maxlength="7"
+                            />
+                            <button
+                                v-if="form.color"
+                                type="button"
+                                class="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                @click="form.color = ''"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <p v-if="errors.color" class="text-xs text-destructive">{{ errors.color }}</p>
                     </div>
-                    <p v-if="errors.color" class="text-xs text-destructive">{{ errors.color }}</p>
-                </div>
-
-                <!-- Tags -->
-                <div class="space-y-1.5">
-                    <Label>Tags</Label>
-                    <PlannerTagInput
-                        v-model="form.tag_ids"
-                        :tags="localTags"
-                        @create="async (name) => {
-                            const def = storeTag()
-                            const res = await fetch(def.url, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ?? '' },
-                                body: JSON.stringify({ name }),
-                            })
-                            if (res.ok) {
-                                const tag = await res.json()
-                                localTags.value = [...localTags.value, tag]
-                                form.tag_ids = [...form.tag_ids, tag.id]
-                            }
-                        }"
-                    />
-                </div>
-
-                <!-- Visibility -->
-                <div class="space-y-1.5">
-                    <Label>Visibility</Label>
-                    <Select v-model="form.visibility">
-                        <SelectTrigger class="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="private">Private</SelectItem>
-                            <SelectItem value="shared">Shared</SelectItem>
-                        </SelectContent>
-                    </Select>
                 </div>
             </form>
 
-            <SheetFooter class="px-6 py-4 border-t border-border shrink-0">
-                <SheetClose as-child>
+            <DrawerFooter class="px-6 py-4 border-t border-border shrink-0 flex flex-row gap-2 justify-end">
+                <DrawerClose as-child>
                     <Button variant="outline" type="button">Cancel</Button>
-                </SheetClose>
+                </DrawerClose>
                 <Button type="button" :disabled="processing || !form.title.trim()" @click="submit">
                     {{ isEdit() ? 'Save changes' : 'Create milestone' }}
                 </Button>
-            </SheetFooter>
-        </SheetContent>
-    </Sheet>
+            </DrawerFooter>
+        </DrawerContent>
+    </Drawer>
 </template>
