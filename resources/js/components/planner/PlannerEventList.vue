@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { ref, watch, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Button } from '@/components/ui/button'
-import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
-import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
 import { reorder as reorderEvents } from '@/actions/App/Http/Controllers/Planner/EventController'
+import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
+import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { PaginatedData, PlannerEvent } from '@/types/planner'
 
 const props = defineProps<{
@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
     snooze: [event: PlannerEvent]
+    moveToBacklog: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
@@ -31,8 +32,13 @@ const isDragging = ref(false)
 watch(
     () => props.events?.data,
     (data) => {
-        if (isDragging.value) return
-        nextTick(() => { localEvents.value = data ? [...data] : [] })
+        if (isDragging.value) {
+            return
+        }
+
+        nextTick(() => {
+            localEvents.value = data ? [...data] : []
+        })
     },
     { immediate: true },
 )
@@ -74,7 +80,7 @@ function onEnd() {
                 v-model="localEvents"
                 handle=".drag-handle"
                 ghost-class="opacity-30"
-                animation="150"
+                :animation="150"
                 class="flex flex-col"
                 @start="onStart"
                 @end="onEnd"
@@ -86,6 +92,7 @@ function onEnd() {
                     :show-milestone="showMilestone"
                     @edit="emit('edit', $event)"
                     @snooze="emit('snooze', $event)"
+                    @move-to-backlog="emit('moveToBacklog', $event)"
                     @delete="emit('delete', $event)"
                     @toggle-status="emit('toggleStatus', $event)"
                     @duplicate="emit('duplicate', $event)"

@@ -1,14 +1,16 @@
-# Life Planner — Feature Blueprint
+# Planner — Feature Blueprint
+
+> **Alias note:** This feature was previously called **"Life Planner"** / **"life-planner"**. All new references use **"Planner"**. If you see "life planner" anywhere, it refers to this same feature.
 
 **Status:** Planning
 **First discussed:** 2026-04-13
-**Feature slug:** `life-planner`
+**Feature slug:** `planner` (previously `life-planner`)
 
 ---
 
 ## Overview
 
-Life Planner lets users plan and track events across every dimension of their life — work, personal, health, finance, and beyond. Events are organized under **Milestones** (broad goals) and tagged freely. Events can be nested (sub-events/tasks inside a parent event), recurring, and shared with other users.
+The Planner lets users plan and track events across every dimension of their life — work, personal, health, finance, and beyond. Events are organized under **Milestones** (broad goals) and tagged freely. Events can be nested (sub-events/tasks inside a parent event), recurring, and shared with other users.
 
 ---
 
@@ -298,7 +300,7 @@ All views display the same underlying data — just different presentations. Swi
 | **Data loading / update strategy** | See **Data Loading Architecture** section below. No Pinia, no separate REST API, no client-side cache. |
 | **Hard milestone `end_at` mutability** | The field is fully immutable once set — cannot be increased or decreased via UI or API. Resolve breaches by adjusting events, moving events to backlog, deleting events, or converting to a soft deadline. |
 | **Default view on `/planner`** | When no `?milestone=` param is present, auto-select the first milestone ordered by `created_at`. If no milestones exist, show the Backlog tab. |
-| **Route file** | Life Planner routes live in `routes/planner.php`, included from `routes/web.php`. Keeps web.php clean as the feature grows. |
+| **Route file** | Planner routes live in `routes/planner.php`, included from `routes/web.php`. Keeps web.php clean as the feature grows. |
 | **ICS status mapping** | `draft`/`upcoming` → `TENTATIVE`, `in_progress` → `CONFIRMED`, `completed` → `COMPLETED`, `cancelled`/`skipped` → `CANCELLED`. |
 
 ---
@@ -441,7 +443,7 @@ Used for: Popover, Dialog, Sheet (drawer), Tabs, Switch, Collapsible, Tooltip, S
 | **Flow Chart** | Custom Vue + SVG | DAG layout, SVG dependency edges |
 | **Graph / Analytics** | Custom Vue + SVG/Canvas | Heatmaps, completion trend lines |
 
-> **Pricing reference (for our own pricing page):** https://fullcalendar.io/pricing — FullCalendar Premium starts at $480/yr. Useful benchmark when designing Life Planner tier pricing.
+> **Pricing reference (for our own pricing page):** https://fullcalendar.io/pricing — FullCalendar Premium starts at $480/yr. Useful benchmark when designing Planner tier pricing.
 
 ---
 
@@ -449,7 +451,8 @@ Used for: Popover, Dialog, Sheet (drawer), Tabs, Switch, Collapsible, Tooltip, S
 
 | File | Status | Purpose |
 |---|---|---|
-| [`blueprint/life-planner/phase-1.md`](life-planner/phase-1.md) | ✅ Written | Full implementation detail for Phase 1 |
-| `blueprint/life-planner/phase-2.md` | 🔜 Pending | Calendar view, Table view, sub-events |
-| `blueprint/life-planner/recurrence.md` | 🔜 Pending | Recurrence rule design and edge cases |
-| `blueprint/life-planner/views.md` | 🔜 Pending | View-by-view UX and component breakdown |
+| [`blueprint/planner/phase-1.md`](planner/phase-1.md) | ✅ Written | Full implementation detail for Phase 1 |
+| [`blueprint/planner/phase-2.md`](planner/phase-2.md) | ✅ Written | Table view + Board view |
+| [`blueprint/planner/phase-3.md`](planner/phase-3.md) | 🔜 Pending | GraphQL + Custom Fields + Real-time |
+| [`blueprint/planner/phase-4.md`](planner/phase-4.md) | 🔜 Pending | Roadmap / Timeline view |
+| `blueprint/planner/recurrence.md` | 🔜 Pending | Recurrence rule design and edge cases |

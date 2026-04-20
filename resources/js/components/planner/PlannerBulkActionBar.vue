@@ -15,7 +15,7 @@ const emit = defineEmits<{
 
 <template>
     <div
-        class="flex items-center gap-3 px-4 py-3 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+        class="flex items-center gap-3 px-4 py-3 border-t border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80"
     >
         <span class="text-sm text-muted-foreground">
             {{ events.length }} selected

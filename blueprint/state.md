@@ -2,14 +2,19 @@
 
 Current snapshot of what exists in the codebase. Updated manually as features are built.
 
+> **Naming note:** The planner feature was previously called **"Life Planner"** / **"life-planner"**. All references now use **"Planner"**. If you see "life planner" anywhere, it refers to this same feature.
+
 ---
 
 ## Blueprint Documents
 
 | Document | Purpose |
 |---|---|
-| [`blueprint/life-planner.md`](./life-planner.md) | Core data model, views overview, milestones, events, tags |
-| [`blueprint/life-planner/phase-1.md`](./life-planner/phase-1.md) | Phase 1 spec — migrations, models, controllers, list view |
+| [`blueprint/planner.md`](./planner.md) | Core data model, views overview, milestones, events, tags |
+| [`blueprint/planner/phase-1.md`](./planner/phase-1.md) | Phase 1 spec — migrations, models, controllers, list view |
+| [`blueprint/planner/phase-2.md`](./planner/phase-2.md) | Phase 2 spec — Table view + Board view |
+| [`blueprint/planner/phase-3.md`](./planner/phase-3.md) | Phase 3 spec — GraphQL + Custom Fields + Real-time |
+| [`blueprint/planner/phase-4.md`](./planner/phase-4.md) | Phase 4 spec — Roadmap / Timeline view |
 | [`blueprint/planner-views.md`](./planner-views.md) | **GitHub Projects-style views** — master doc, architecture, phase breakdown |
 | [`blueprint/planner-views/component-tree.md`](./planner-views/component-tree.md) | Full Vue component hierarchy for all views |
 | [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md) | Custom fields + view config tables (`planner_fields`, `planner_field_values`, `planner_views`) |
@@ -24,7 +29,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ## Feature Progress
 
-### Life Planner — Phase 1
+### Planner — Phase 1
 
 | Area | Status |
 |---|---|
@@ -59,10 +64,10 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
-### Life Planner — Phase 2 (Table View + Board View)
+### Planner — Phase 2 (Table View + Board View)
 
 > **Status: Complete ✅**
-> See [`blueprint/planner-views.md`](./planner-views.md), [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md), [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md)
+> See [`blueprint/planner/phase-2.md`](./planner/phase-2.md), [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md), [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md)
 
 | Area | Status |
 |---|---|
@@ -86,10 +91,10 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
-### Life Planner — Phase 3 (GraphQL + Custom Fields + Real-time)
+### Planner — Phase 3 (GraphQL + Custom Fields + Real-time)
 
 > **Status: Blueprint complete — not yet started**
-> See [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md), [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md), [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md)
+> See [`blueprint/planner/phase-3.md`](./planner/phase-3.md), [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md), [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md), [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md)
 
 | Area | Status |
 |---|---|
@@ -113,10 +118,10 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
-### Life Planner — Phase 4 (Roadmap View)
+### Planner — Phase 4 (Roadmap View)
 
 > **Status: Blueprint scoped — design only**
-> See [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md)
+> See [`blueprint/planner/phase-4.md`](./planner/phase-4.md), [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md)
 
 | Area | Status |
 |---|---|
@@ -191,7 +196,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 ### Standard Laravel tables
 `password_reset_tokens`, `sessions`, `cache`, `jobs`
 
-### Life Planner tables
+### Planner tables
 
 #### `milestones`
 | Column | Type | Notes |
@@ -286,7 +291,9 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 - Fillable: `user_id`, `provider`, `provider_id`, `provider_token`, `provider_refresh_token`
 - Relations: `belongsTo(User::class)`
 
-### Life Planner Models
+### Planner Models
+
+> **Alias note:** "Life Planner" is now called **Planner**. These models belong to the Planner feature.
 
 #### `Milestone`
 - Traits: `HasUlids`, `HasFactory`, `SoftDeletes`
@@ -320,7 +327,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `Premium` | `'premium'` |
 | `Loyalist` | `'loyalist'` |
 
-### Life Planner Enums
+### Planner Enums
 
 | Enum | Values |
 |---|---|
@@ -474,7 +481,7 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `PlaceholderPattern.vue` | Decorative background pattern |
 | `ui/` | shadcn-vue primitives (Badge, Button, etc.) |
 
-### Life Planner components (`resources/js/components/planner/`)
+### Planner components (`resources/js/components/planner/`)
 | Component | Status | Purpose |
 |---|---|---|
 | `PlannerMilestoneTabs.vue` | ✅ Done | Legacy horizontal tab strip (superseded by `PlannerMilestoneSelector`) |
@@ -545,7 +552,7 @@ A single-page marketing/landing experience with three scroll sections:
 1. Page Builder (Servers)
 2. Community Servers (Community)
 3. Expense Planner (Productivity)
-4. Life Planner (Productivity)
+4. Planner (Productivity)
 5. Granular Access Control (Access)
 6. Loyalist Perks (Premium)
 
@@ -582,7 +589,7 @@ These apply to every feature and file in this codebase. Non-negotiable.
 - Eager-load relationships before iterating — no N+1 ever ships.
 
 ### Frontend (Vue + Inertia)
-- **Data loading follows the layered strategy** (see `blueprint/life-planner.md` → Data Loading Architecture):
+- **Data loading follows the layered strategy** (see `blueprint/planner.md` → Data Loading Architecture):
   - Standard props for data needed on first render.
   - `Inertia::defer()` for secondary data; Vue shows skeleton pulse states while `undefined`.
   - `router.reload({ only: [...], preserveScroll: true })` for post-mutation updates.
@@ -611,7 +618,7 @@ These apply to every feature and file in this codebase. Non-negotiable.
 - Any real dashboard content
 - Server / community feature (Page Builder)
 - Expense Planner module
-- Life Planner module
+- Planner module
 - Subscription / payment flow
 - Loyalist perks implementation
 - Invite system (page exists, logic TBD)

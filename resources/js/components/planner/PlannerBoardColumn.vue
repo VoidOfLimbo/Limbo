@@ -69,10 +69,10 @@ function onStart() {
         <!-- Cards (draggable) -->
         <VueDraggable
             v-model="localEvents"
-            class="flex flex-col gap-2 p-2 flex-1 overflow-y-auto min-h-[80px]"
+            class="flex flex-col gap-2 p-2 flex-1 overflow-y-auto min-h-20"
             group="planner-board"
             ghost-class="opacity-40"
-            animation="150"
+            :animation="150"
             :data-column-id="columnId"
             @start="onStart"
             @end="onEnd"

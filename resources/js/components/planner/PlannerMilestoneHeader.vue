@@ -143,4 +143,24 @@ const progressBarColor = computed(() => {
             />
         </div>
     </div>
+
+    <!-- Breach warning callout -->
+    <div
+        v-if="milestone.is_breached"
+        class="flex items-center gap-2 px-4 py-2 bg-destructive/5 border-b border-destructive/20 text-destructive text-xs"
+    >
+        <AlertTriangle class="size-3.5 shrink-0" />
+        <span class="flex-1">
+            <span class="font-medium">{{ milestone.breach_count }} event{{ milestone.breach_count !== 1 ? 's' : '' }} exceed{{ milestone.breach_count === 1 ? 's' : '' }} this hard deadline.</span>
+            Adjust event dates, move events to backlog, or convert this milestone to a soft deadline.
+        </span>
+        <Button
+            variant="outline"
+            size="sm"
+            class="h-6 px-2 text-[11px] border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 shrink-0"
+            @click="emit('edit', milestone)"
+        >
+            Resolve
+        </Button>
+    </div>
 </template>

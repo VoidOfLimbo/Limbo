@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Planner;
 
+use App\Enums\DeadlineType;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Milestone;
@@ -23,12 +24,21 @@ class PlannerController extends Controller
             ->withCount([
                 'events as total_events_count',
                 'events as completed_events_count' => fn ($q) => $q->where('status', 'completed'),
+                'events as breach_count' => fn ($q) => $q->whereNotNull('end_at')
+                    ->whereColumn('events.end_at', '>', 'milestones.end_at'),
             ])
             ->orderBy('created_at')
             ->get()
             ->map(function (Milestone $milestone) {
                 $milestone->setAttribute('progress', $milestone->progress);
-                $milestone->setAttribute('is_breached', $milestone->isBreached());
+                $isBreached = $milestone->deadline_type === DeadlineType::Hard
+                    && $milestone->end_at !== null
+                    && (int) $milestone->breach_count > 0;
+                $milestone->setAttribute('is_breached', $isBreached);
+                // breach_count is only meaningful for hard milestones
+                if ($milestone->deadline_type !== DeadlineType::Hard) {
+                    $milestone->setAttribute('breach_count', 0);
+                }
 
                 return $milestone;
             });
@@ -52,8 +62,10 @@ class PlannerController extends Controller
         ]);
     }
 
+    /** @return Builder<Event> */
     private function buildEventsQuery(string $userId, ?string $milestoneId, array $filters): Builder
     {
+        /** @var Builder<Event> $query */
         $query = Event::query()
             ->forUser($userId)
             ->with([

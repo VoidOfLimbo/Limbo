@@ -2,13 +2,13 @@
 
 **Status:** Blueprint / Design
 **First discussed:** 2026-04-19
-**Depends on:** [`blueprint/life-planner.md`](./life-planner.md), [`blueprint/life-planner/phase-1.md`](./life-planner/phase-1.md)
+**Depends on:** [`blueprint/planner.md`](./planner.md), [`blueprint/planner/phase-1.md`](./planner/phase-1.md)
 
 ---
 
 ## Overview
 
-The Life Planner evolves from a simple list view into a **full GitHub Projects-style workspace** — a data-centric multi-view interface where events and milestones are treated as structured records. Like GitHub Projects (and Notion/Airtable), the same underlying data renders into completely different visual paradigms based on user preference.
+The Planner evolves from a simple list view into a **full GitHub Projects-style workspace** — a data-centric multi-view interface where events and milestones are treated as structured records. Like GitHub Projects (and Notion/Airtable), the same underlying data renders into completely different visual paradigms based on user preference.
 
 This is not just a UI change. It requires a new data layer (custom fields, view configurations), a new API strategy (GraphQL via Lighthouse), and real-time sync (WebSockets via Echo).
 

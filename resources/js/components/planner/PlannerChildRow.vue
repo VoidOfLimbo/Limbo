@@ -13,10 +13,11 @@ const props = defineProps<{
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
     snooze: [event: PlannerEvent]
+    moveToBacklog: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
-}>()
+}>()()
 
 const isCompleted = computed(() => props.event.status === 'completed')
 const isSnoozed = computed(() => !!props.event.snoozed_until && new Date(props.event.snoozed_until) > new Date())
@@ -67,6 +68,7 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
         :event="event"
         @edit="emit('edit', $event)"
         @snooze="emit('snooze', $event)"
+        @move-to-backlog="emit('moveToBacklog', $event)"
         @delete="emit('delete', $event)"
         @toggle-status="emit('toggleStatus', $event)"
         @duplicate="emit('duplicate', $event)"

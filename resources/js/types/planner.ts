@@ -20,6 +20,7 @@ export interface PlannerMilestone {
     color: string | null
     total_events_count: number
     completed_events_count: number
+    breach_count: number
     progress: number
     is_breached: boolean
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle2, Circle, Pencil, AlarmClock, Trash2, Copy } from 'lucide-vue-next'
+import { CheckCircle2, Circle, Pencil, AlarmClock, Trash2, Copy, Inbox } from 'lucide-vue-next'
 import {
     ContextMenuRoot,
     ContextMenuTrigger,
@@ -17,10 +17,11 @@ const props = defineProps<{
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
     snooze: [event: PlannerEvent]
+    moveToBacklog: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
-}>()
+}>()()
 </script>
 
 <template>
@@ -31,7 +32,7 @@ const emit = defineEmits<{
 
         <ContextMenuPortal>
             <ContextMenuContent
-                class="z-50 min-w-[160px] rounded-md border border-border bg-popover p-1 shadow-md
+                class="z-50 min-w-40 rounded-md border border-border bg-popover p-1 shadow-md
                        animate-in fade-in-0 zoom-in-95"
             >
                 <!-- Toggle complete -->
@@ -75,6 +76,17 @@ const emit = defineEmits<{
                 >
                     <AlarmClock class="size-4 text-amber-500" />
                     Snooze…
+                </ContextMenuItem>
+
+                <!-- Move to backlog -->
+                <ContextMenuItem
+                    v-if="event.milestone_id !== null"
+                    class="flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer
+                           hover:bg-accent outline-none select-none"
+                    @select="emit('moveToBacklog', event)"
+                >
+                    <Inbox class="size-4 text-muted-foreground" />
+                    Move to backlog
                 </ContextMenuItem>
 
                 <ContextMenuSeparator class="my-1 h-px bg-border" />

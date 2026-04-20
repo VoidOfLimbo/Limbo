@@ -144,7 +144,7 @@ const statusClass: Record<string, string> = {
         <Popover v-model:open="open">
             <PopoverTrigger as-child>
                 <button
-                    class="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-w-[300px]"
+                    class="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-w-75"
                     aria-haspopup="listbox"
                 >
                     <!-- Active milestone indicator -->
@@ -200,7 +200,7 @@ const statusClass: Record<string, string> = {
                         <!-- Group picker dropdown (inline, no nested popover) -->
                         <div
                             v-if="showGroupPicker"
-                            class="absolute right-0 top-full mt-1 z-10 bg-popover border border-border rounded-md shadow-md py-1 min-w-[110px]"
+                            class="absolute right-0 top-full mt-1 z-10 bg-popover border border-border rounded-md shadow-md py-1 min-w-27.5"
                         >
                             <button
                                 v-for="opt in GROUP_OPTIONS"
@@ -220,7 +220,7 @@ const statusClass: Record<string, string> = {
                 </div>
 
                 <!-- Grouped list -->
-                <div class="max-h-[340px] overflow-y-auto py-1" @click.stop="showGroupPicker = false">
+                <div class="max-h-85 overflow-y-auto py-1" @click.stop="showGroupPicker = false">
                     <template v-for="[groupKey, items] in grouped" :key="groupKey">
                         <!-- Collapsible group header -->
                         <button

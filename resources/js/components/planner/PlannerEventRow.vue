@@ -17,10 +17,11 @@ const expanded = ref(true)
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
     snooze: [event: PlannerEvent]
+    moveToBacklog: [event: PlannerEvent]
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
-}>()
+}>()()
 
 const isCompleted = computed(() => props.event.status === 'completed')
 const isSnoozed = computed(() => !!props.event.snoozed_until && new Date(props.event.snoozed_until) > new Date())
@@ -89,13 +90,17 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
         :event="event"
         @edit="emit('edit', $event)"
         @snooze="emit('snooze', $event)"
+        @move-to-backlog="emit('moveToBacklog', $event)"
         @delete="emit('delete', $event)"
         @toggle-status="emit('toggleStatus', $event)"
         @duplicate="emit('duplicate', $event)"
     >
     <div
         class="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors border-b border-border/50 cursor-default"
-        :class="{ 'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped' }"
+        :class="{
+            'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped',
+            'border-l-2 border-l-destructive': isMilestoneBreached,
+        }"
     >
         <!-- Drag handle -->
         <GripVertical class="drag-handle size-3.5 shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/60 cursor-grab active:cursor-grabbing transition-colors" />
@@ -172,6 +177,15 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                 <span v-if="dateRange" class="flex items-center gap-1">
                     <Clock class="size-3" />
                     {{ dateRange }}
+                </span>
+
+                <!-- Breach badge -->
+                <span
+                    v-if="isMilestoneBreached"
+                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/20"
+                >
+                    <AlertTriangle class="size-2.5" />
+                    Exceeds deadline
                 </span>
 
                 <!-- Location -->

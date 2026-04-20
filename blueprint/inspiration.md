@@ -19,7 +19,7 @@ A living reference of sites, libraries, and designs that inspire the look, feel,
 
 | Resource | URL | What we like |
 |---|---|---|
-| FullCalendar (pricing reference) | https://fullcalendar.io/pricing | Pricing page benchmarked for our own Life Planner tier design; also studied as a reference for calendar UX patterns (month/week/day views, drag-to-create, event overflow) |
+| FullCalendar (pricing reference) | https://fullcalendar.io/pricing | Pricing page benchmarked for our own Planner tier design; also studied as a reference for calendar UX patterns (month/week/day views, drag-to-create, event overflow) |
 | FullCalendar + shadcn-vue example | https://github.com/Lipdk/shadcn-vue-ui-fullcalendar-example | Integration example studied during evaluation; ultimately building our own calendar from scratch but useful for understanding layout patterns |
 
 ---

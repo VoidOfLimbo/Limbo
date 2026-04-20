@@ -1,8 +1,8 @@
-# Life Planner — Phase 1: Foundation
+# Planner — Phase 1: Foundation
 
 **Goal:** Ship the core data layer, Milestone + Event CRUD, List view, Backlog, basic filters, snooze, iCalendar export, and sidebar navigation entry point. No recurrence, no reminders, no sharing.
 
-**Depends on:** [`blueprint/life-planner.md`](../life-planner.md)
+**Depends on:** [`blueprint/planner.md`](../planner.md)
 
 ---
 
@@ -22,13 +22,13 @@ All sub-actions (CRUD, snooze, export) hit their own API-style controller routes
 
 ## Navigation
 
-The Life Planner is reachable from the **sidebar navigation**. Add a "Planner" item with an appropriate icon (e.g. calendar/checklist). Follows the existing sidebar pattern used by other authenticated routes.
+The Planner is reachable from the **sidebar navigation**. Add a "Planner" item with an appropriate icon (e.g. calendar/checklist). Follows the existing sidebar pattern used by other authenticated routes.
 
 ---
 
 ## Database
 
-All Life Planner tables are created in Phase 1 — even those not wired to UI yet (reminders, occurrences, participants). This avoids painful schema additions when later phases land.
+All Planner tables are created in Phase 1 — even those not wired to UI yet (reminders, occurrences, participants). This avoids painful schema additions when later phases land.
 
 ### Migrations (in order)
 
@@ -246,7 +246,7 @@ return Inertia::render('Planner/Index', [
 ]);
 ```
 
-After any mutation, controllers do **not** return JSON — they trigger a partial reload via `router.reload({ only: [...], preserveScroll: true })` from the frontend. The scope of `only` is the minimum set of props affected by the action (see Data Loading Architecture in `blueprint/life-planner.md`).
+After any mutation, controllers do **not** return JSON — they trigger a partial reload via `router.reload({ only: [...], preserveScroll: true })` from the frontend. The scope of `only` is the minimum set of props affected by the action (see Data Loading Architecture in `blueprint/planner.md`).
 
 ### `MilestoneController`
 ```
@@ -584,10 +584,10 @@ All tests are Pest feature tests under `tests/Feature/Planner/`.
 - [x] iCalendar export endpoints
 - [x] Pest tests — 26 passing, 48 assertions
 - [x] Seeder — `PlannerSeeder` with full edge-case data
-- [ ] `PlannerContextMenu` — ⋮ / right-click: edit, snooze, move to backlog, delete
-- [ ] `PlannerBadge` — owned badge for status, priority, type, breach
-- [ ] `PlannerTagInput` — multi-select tag picker + inline create
-- [ ] `PlannerEmptyState` — empty state + CTA
-- [ ] Wire tag input into `PlannerEventDrawer` and `PlannerMilestoneDrawer`
-- [ ] Breach warning UI (red left border in `PlannerEventRow`, `⚠ N breaches` in `PlannerMilestoneHeader`)
-- [ ] Snooze toast confirmation after successful snooze
+- [x] `PlannerContextMenu` — ⋮ / right-click: edit, snooze, move to backlog, delete
+- [x] `PlannerBadge` — owned badge for status, priority, type, breach
+- [x] `PlannerTagInput` — multi-select tag picker + inline create
+- [x] `PlannerEmptyState` — empty state + CTA
+- [x] Wire tag input into `PlannerEventDrawer` and `PlannerMilestoneDrawer`
+- [x] Breach warning UI (red left border in `PlannerEventRow`, `⚠ N breaches` in `PlannerMilestoneHeader`)
+- [x] Snooze toast confirmation after successful snooze

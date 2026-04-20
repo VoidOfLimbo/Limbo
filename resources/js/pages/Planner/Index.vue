@@ -164,6 +164,22 @@ function duplicateEvent(event: PlannerEvent) {
     })
 }
 
+// ── Move to backlog ───────────────────────────────────────────────────────────
+function moveToBacklog(event: PlannerEvent) {
+    const def = updateEvent(event.id)
+    router.visit(def.url, {
+        method: def.method,
+        data: { milestone_id: null },
+        preserveScroll: true,
+        only: ['events', 'milestones'],
+        onSuccess: () => {
+            toast.success('Moved to backlog', {
+                description: `"${event.title}" has been removed from its milestone.`,
+            })
+        },
+    })
+}
+
 // ── Load more ────────────────────────────────────────────────────────────────
 const loadingMore = ref(false)
 
@@ -233,6 +249,7 @@ function loadMore() {
             @delete="openDelete"
             @toggle-status="toggleStatus"
             @duplicate="duplicateEvent"
+            @move-to-backlog="moveToBacklog"
             @load-more="loadMore"
         />
 
@@ -290,7 +307,7 @@ function loadMore() {
 
     <!-- Snooze popover (rendered as a modal overlay for simplicity) -->
     <Dialog :open="!!snoozingEvent" @update:open="(v) => !v && (snoozingEvent = null)">
-        <DialogContent class="p-0 max-w-[280px]">
+        <DialogContent class="p-0 max-w-70">
             <DialogDescription class="sr-only">Snooze event</DialogDescription>
             <PlannerSnoozePopover
                 v-if="snoozingEvent"
@@ -303,7 +320,7 @@ function loadMore() {
 
     <!-- Delete confirm dialog -->
     <Dialog :open="!!deletingEvent" @update:open="(v) => !v && (deletingEvent = null)">
-        <DialogContent class="max-w-[380px]">
+        <DialogContent class="max-w-95">
             <DialogHeader>
                 <DialogTitle>Delete event?</DialogTitle>
             </DialogHeader>

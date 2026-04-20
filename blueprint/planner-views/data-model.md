@@ -275,9 +275,9 @@ These migrations run after Phase 1 migrations:
 
 ---
 
-## Cross-Milestone Linking (Life Planner Scope)
+## Cross-Milestone Linking (Planner Scope)
 
-Unlike GitHub Projects (which links across repos), the Life Planner links across **life domains**. An event from the "Health" milestone can appear in a "Work-Life Balance" view alongside work events.
+Unlike GitHub Projects (which links across repos), the Planner links across **life domains**. An event from the "Health" milestone can appear in a "Work-Life Balance" view alongside work events.
 
 Implementation:
 - `planner_views` with `milestone_id = null` → global view spanning all user milestones

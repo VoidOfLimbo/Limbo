@@ -128,7 +128,7 @@ function handleKeydown(e: KeyboardEvent) {
             <ComboboxContent
                 :class="cn(
                     'z-50 max-h-52 overflow-y-auto rounded-md border border-border bg-popover shadow-md',
-                    'w-[--reka-combobox-trigger-width] min-w-[180px]',
+                    'w-[--reka-combobox-trigger-width] min-w-45',
                 )"
                 position="popper"
                 :side-offset="4"
@@ -152,7 +152,7 @@ function handleKeydown(e: KeyboardEvent) {
                             :key="tag.id"
                             :value="tag.id"
                             class="relative flex items-center gap-2 rounded px-2 py-1.5 text-xs cursor-pointer
-                                   hover:bg-accent select-none outline-none data-[highlighted]:bg-accent"
+                                   hover:bg-accent select-none outline-none data-highlighted:bg-accent"
                             @select.prevent="toggle(tag.id)"
                         >
                             <!-- Color dot -->
