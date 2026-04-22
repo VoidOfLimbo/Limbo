@@ -127,28 +127,39 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ### Planner — Pagination (List + Table Views)
 
-> **Status: In progress 🔄**
-> Adds per-page selector and paginator controls to list and table views.
+> **Status: Complete ✅**
 
 **Design decisions:**
-- `per_page` accepted as query param (10 / 20 / 50 / 100, default 20)
-- **List view**: manual "Load more" button (not auto-scroll) — appends pages client-side; per-page controls batch size
-- **Table view**: traditional paginator footer (prev / next, page X of Y, showing X–Y of Z); navigates pages (replace, no append)
-- Client-side accumulation in `Index.vue` — no `deepMerge()` on server; watcher resets on filter/milestone change, appends on page > 1
+- `per_page` stored in `localStorage`, sent as `X-Planner-Per-Page` header — never in URL
+- `view` (list/table/board) stored in `localStorage` + Pinia, sent as `X-Planner-View` header — never in URL
+- **List view**: manual "Load more" button (appends pages client-side)
+- **Table view**: traditional paginator footer (prev / next, page X of Y)
+- **Board view**: all events fetched unpaginated — per_page not applied
+- `plannerVisit()` helper wraps all `router.visit` calls with preference headers
+- `groupBy` preference moved to Pinia store + localStorage (shared across dashboard + selector)
 
 | Area | Status |
 |---|---|
-| Backend: `per_page` request param, `perPage` Inertia prop | ✅ Done |
-| Remove server-side `deepMerge()` — client-side accumulation instead | ✅ Done |
-| `Index.vue` — `allListEvents` watcher, `changePerPage()`, `tableGoToPage()` | ✅ Done |
-| Per-page selector in filter bar trailing slot (10 / 20 / 50 / 100) | ✅ Done |
-| `PlannerEventList` — spinner on Load more button | ✅ Done |
-| `PlannerTableView` — accept `PaginatedData`, add pagination footer | ✅ Done |
+| Backend: `per_page` + `view` from request headers (not query params) | ✅ Done |
+| Board view returns all events (no pagination) | ✅ Done |
+| `plannerVisit()` helper injects headers on every navigation | ✅ Done |
+| Per-page selector visible for list + table, hidden concept for board | ✅ Done |
+| `PlannerTableView` — pagination footer | ✅ Done |
+| `PlannerEventList` — Load more + multi-column layout (1–4 cols, capped by container width) | ✅ Done |
 
-**Future (not yet implemented):**
-- Save per-page preference per user to DB/localStorage
-- Per-page selector on Board view (card count per column)
-- URL-based page param for shareable paginated URLs
+---
+
+### Planner — Phase 3.5 (Milestone Dashboard + UI Polish)
+
+> **Status: Complete ✅** — added in this session, not in original blueprint
+
+| Area | Status |
+|---|---|
+| `PlannerMilestoneDashboard` — grid/list of all milestones with search, group-by tabs, sort, filter | ✅ Done |
+| `PlannerMilestoneCard` — progress bar, status/priority badges, breach + hard deadline icons with tooltips | ✅ Done |
+| Dashboard grid view: `auto-fill minmax(300px, 1fr)` responsive layout | ✅ Done |
+| Dashboard list view: multi-column picker (1–4 cols, capped by container width via `useElementSize`) | ✅ Done |
+| `groupBy` in Pinia store + localStorage — shared between dashboard and milestone selector | ✅ Done |
 
 ---
 

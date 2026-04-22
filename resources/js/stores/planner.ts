@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-export type PlannerViewMode = 'list' | 'table' | 'board';
+export type PlannerViewMode = 'list' | 'table' | 'board' | 'roadmap';
 export type GroupByKey = 'quarter' | 'month' | 'status' | 'priority' | 'deadline' | 'visibility' | 'duration';
 
 const STORAGE_KEY = 'planner:activeView';

@@ -41,6 +41,11 @@ class PlannerField extends Model
         return $this->hasMany(PlannerFieldValue::class, 'field_id');
     }
 
+    public function iterations(): HasMany
+    {
+        return $this->hasMany(PlannerIteration::class, 'field_id')->orderBy('start_date');
+    }
+
     public function scopeSystem(Builder $query): Builder
     {
         return $query->where('is_system', true);

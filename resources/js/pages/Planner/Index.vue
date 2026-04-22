@@ -17,12 +17,14 @@ import PlannerViewTabs from '@/components/planner/PlannerViewTabs.vue'
 import PlannerFieldManager from '@/components/planner/PlannerFieldManager.vue'
 import PlannerTableView from '@/components/planner/PlannerTableView.vue'
 import PlannerBoardView from '@/components/planner/PlannerBoardView.vue'
+import PlannerRoadmapView from '@/components/planner/PlannerRoadmapView.vue'
 import PlannerMilestoneDashboard from '@/components/planner/PlannerMilestoneDashboard.vue'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { destroy, snooze as snoozeEvent, update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
+import { update as updateMilestone } from '@/actions/App/Http/Controllers/Planner/MilestoneController'
 import { usePlannerFilters } from '@/composables/planner/usePlannerFilters'
 import { usePlannerStore } from '@/stores/planner'
 import type { PaginatedData, PlannerEvent, PlannerField, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag, PlannerView } from '@/types/planner'
@@ -127,9 +129,12 @@ const currentFilters = computed(() => ({
     ...props.filters,
 }))
 
-// Reload events when switching to/from board so pagination is applied correctly
+// Reload events when switching to/from board or roadmap (all-events views)
+const ALL_EVENTS_VIEWS = ['board', 'roadmap'] as const
 watch(() => plannerStore.activeView, (newView, oldView) => {
-    if (newView === 'board' || oldView === 'board') {
+    const newIsAll = ALL_EVENTS_VIEWS.includes(newView as typeof ALL_EVENTS_VIEWS[number])
+    const oldIsAll = ALL_EVENTS_VIEWS.includes(oldView as typeof ALL_EVENTS_VIEWS[number])
+    if (newIsAll !== oldIsAll) {
         plannerVisit(page.url.split('?')[0], {
             data: { ...currentFilters.value },
             preserveScroll: true,
@@ -272,6 +277,39 @@ function duplicateEvent(event: PlannerEvent) {
         },
         preserveScroll: true,
         only: ['events'],
+    })
+}
+
+// ── Roadmap reschedule ───────────────────────────────────────────────────────
+// Single Inertia visit: Inertia forwards `only` + headers through the back()
+// redirect, so one round-trip is enough. preserveState keeps expanded rows +
+// scroll position intact without a second plannerVisit call.
+function handleRoadmapReschedule(id: string, kind: 'milestone' | 'event', newStart: string, newEnd: string) {
+    const def = kind === 'event' ? updateEvent(id) : updateMilestone(id)
+
+    const data: Record<string, unknown> = { start_at: newStart, end_at: newEnd }
+
+    if (kind === 'milestone') {
+        // Force manual so recalculateDerivedDates() won't overwrite our new dates
+        data.duration_source = 'manual'
+
+        // Hard-deadline milestones protect end_at — omit it to avoid silent discard
+        const milestone = props.milestones.find((m) => m.id === id)
+        if (milestone?.deadline_type === 'hard' && milestone.end_at !== null) {
+            delete data.end_at
+        }
+    }
+
+    router.visit(def.url, {
+        method: def.method,
+        data,
+        preserveScroll: true,
+        preserveState: true,
+        only: ['events', 'milestones'],
+        headers: {
+            'X-Planner-View': 'roadmap',
+            'X-Planner-Per-Page': String(localPerPage.value),
+        },
     })
 }
 
@@ -451,7 +489,7 @@ function tableGoToPage(targetPage: number) {
                     @go-to-page="tableGoToPage"
                 />
                 <div
-                    v-else
+                    v-else-if="plannerStore.activeView === 'board'"
                     class="flex-1 overflow-hidden"
                 >
                     <PlannerBoardView
@@ -463,6 +501,18 @@ function tableGoToPage(targetPage: number) {
                         @delete="openDelete"
                         @toggle-status="toggleStatus"
                         @duplicate="duplicateEvent"
+                    />
+                </div>
+                <div
+                    v-else
+                    class="flex-1 overflow-hidden min-h-0 flex flex-col"
+                >
+                    <PlannerRoadmapView
+                        :milestones="milestones"
+                        :events="events"
+                        :active-milestone-id="activeMilestoneId"
+                        @create-event="openCreateEvent"
+                        @reschedule="handleRoadmapReschedule"
                     />
                 </div>
             </div>

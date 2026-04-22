@@ -95,11 +95,13 @@ const columnEvents = computed(() =>
 // ── Card moved ─────────────────────────────────────────────────────────────
 function onCardMoved(eventId: string, newColumnId: string) {
     if (groupById.value === 'status') {
-        router.patch(
-            updateEvent(eventId).url,
-            { status: newColumnId as EventStatus },
-            { preserveScroll: true, only: ['events', 'milestones'] },
-        )
+        const def = updateEvent(eventId)
+        router.visit(def.url, {
+            method: def.method,
+            data: { status: newColumnId as EventStatus },
+            preserveScroll: true,
+            only: ['events', 'milestones'],
+        })
     }
     // custom field moves would require field-value upsert — omitted for now
 }

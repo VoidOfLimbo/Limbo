@@ -73,9 +73,14 @@ class PlannerController extends Controller
         ];
 
         if (! $showingDashboard) {
-            if ($view === 'board') {
-                $props['events'] = Inertia::defer(function () use ($user, $activeMilestoneId, $filters, $request) {
-                    $items = $this->buildEventsQuery($user->id, $activeMilestoneId, $filters)->get();
+            if ($view === 'board' || $view === 'roadmap') {
+                $props['events'] = Inertia::defer(function () use ($user, $activeMilestoneId, $filters, $request, $view) {
+                    // Board: return all matching events (no pagination) scoped to milestone.
+                    // Roadmap on the dashboard (no milestone): return all user events for
+                    // a cross-milestone overview. Roadmap on a milestone: scope to that milestone.
+                    $skipMilestoneFilter = $view === 'roadmap' && $activeMilestoneId === null;
+                    $milestoneFilter = $skipMilestoneFilter ? null : $activeMilestoneId;
+                    $items = $this->buildEventsQuery($user->id, $milestoneFilter, $filters, $skipMilestoneFilter)->get();
 
                     return new LengthAwarePaginator(
                         $items,
@@ -106,7 +111,7 @@ class PlannerController extends Controller
     }
 
     /** @return Builder<Event> */
-    private function buildEventsQuery(string $userId, ?string $milestoneId, array $filters): Builder
+    private function buildEventsQuery(string $userId, ?string $milestoneId, array $filters, bool $skipMilestoneFilter = false): Builder
     {
         /** @var Builder<Event> $query */
         $query = Event::query()
@@ -122,10 +127,12 @@ class PlannerController extends Controller
             ->orderByRaw('sort_order ASC NULLS LAST')
             ->orderBy('start_at');
 
-        if ($milestoneId) {
-            $query->forMilestone($milestoneId);
-        } else {
-            $query->backlog();
+        if (! $skipMilestoneFilter) {
+            if ($milestoneId) {
+                $query->forMilestone($milestoneId);
+            } else {
+                $query->backlog();
+            }
         }
 
         if (! empty($filters['status'])) {
