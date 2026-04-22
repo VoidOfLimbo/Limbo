@@ -53,9 +53,8 @@ const progressBarColor = computed(() => {
         class="relative flex items-center gap-3 px-4 py-2.5 border-b border-border bg-card/50 shrink-0"
         :style="milestone.color ? { borderLeftColor: milestone.color, borderLeftWidth: '3px' } : {}"
     >
-        <!-- Title + status + flags -->
+        <!-- Status + flags (title is in breadcrumb) -->
         <div class="flex-1 min-w-0 flex items-center gap-2">
-            <h2 class="text-sm font-semibold truncate">{{ milestone.title }}</h2>
             <Badge :variant="statusVariant" class="capitalize text-[10px] h-5 px-1.5 shrink-0">{{ milestone.status }}</Badge>
 
             <Tooltip v-if="milestone.deadline_type === 'hard'">

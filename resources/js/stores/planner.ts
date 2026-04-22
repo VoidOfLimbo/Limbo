@@ -1,20 +1,21 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
-export type PlannerView = 'list' | 'table' | 'board';
+export type PlannerViewMode = 'list' | 'table' | 'board';
 
 const STORAGE_KEY = 'planner:activeView';
 
 export const usePlannerStore = defineStore('planner', () => {
-    const activeView = ref<PlannerView>(
-        (localStorage.getItem(STORAGE_KEY) as PlannerView) ?? 'list',
-    );
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
+    const activeView = ref<PlannerViewMode>((stored as PlannerViewMode) ?? 'list')
 
     watch(activeView, (val) => {
-        localStorage.setItem(STORAGE_KEY, val);
-    });
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(STORAGE_KEY, val)
+        }
+    })
 
-    function setView(view: PlannerView) {
+    function setView(view: PlannerViewMode) {
         activeView.value = view;
     }
 

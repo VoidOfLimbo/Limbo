@@ -12,6 +12,7 @@ use App\Models\Milestone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class EventController extends Controller
 {
@@ -81,7 +82,7 @@ class EventController extends Controller
         return back();
     }
 
-    public function reorder(Request $request): RedirectResponse
+    public function reorder(Request $request): Response
     {
         $data = $request->validate(['ids' => 'required|array', 'ids.*' => 'string']);
 
@@ -91,7 +92,7 @@ class EventController extends Controller
                 ->update(['sort_order' => $order]);
         }
 
-        return back();
+        return response()->noContent();
     }
 
     private function recalculateMilestoneIfNeeded(Event $event): void

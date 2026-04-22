@@ -17,8 +17,7 @@ const emit = defineEmits<{
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
-}>()()
-
+}>()
 const isCompleted = computed(() => props.event.status === 'completed')
 const isSnoozed = computed(() => !!props.event.snoozed_until && new Date(props.event.snoozed_until) > new Date())
 

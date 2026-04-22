@@ -16,7 +16,10 @@ createInertiaApp({
         const app = createApp(App, props);
         app.use(plugin);
         app.use(pinia);
-        app.mount(el);
+        if (el) {
+            app.mount(el);
+        }
+        return app;
     },
     resolve: (name) => {
         const pages = import.meta.glob('./pages/**/*.vue', { eager: true });

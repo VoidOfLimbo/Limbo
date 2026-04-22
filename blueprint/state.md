@@ -13,13 +13,13 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | [`blueprint/planner.md`](./planner.md) | Core data model, views overview, milestones, events, tags |
 | [`blueprint/planner/phase-1.md`](./planner/phase-1.md) | Phase 1 spec — migrations, models, controllers, list view |
 | [`blueprint/planner/phase-2.md`](./planner/phase-2.md) | Phase 2 spec — Table view + Board view |
-| [`blueprint/planner/phase-3.md`](./planner/phase-3.md) | Phase 3 spec — GraphQL + Custom Fields + Real-time |
+| [`blueprint/planner/phase-3.md`](./planner/phase-3.md) | Phase 3 spec — Custom Fields + Named Views (REST) |
 | [`blueprint/planner/phase-4.md`](./planner/phase-4.md) | Phase 4 spec — Roadmap / Timeline view |
 | [`blueprint/planner-views.md`](./planner-views.md) | **GitHub Projects-style views** — master doc, architecture, phase breakdown |
 | [`blueprint/planner-views/component-tree.md`](./planner-views/component-tree.md) | Full Vue component hierarchy for all views |
 | [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md) | Custom fields + view config tables (`planner_fields`, `planner_field_values`, `planner_views`) |
-| [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md) | Lighthouse GraphQL schema — types, queries, mutations, subscriptions |
-| [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md) | Echo + WebSocket strategy, optimistic UI pattern |
+| [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md) | GraphQL schema (reference doc — deferred) |
+| [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md) | WebSocket strategy (deferred to future phase) |
 | [`blueprint/planner-views/table-view.md`](./planner-views/table-view.md) | TanStack Table + Vue Virtual Scroller implementation guide |
 | [`blueprint/planner-views/board-view.md`](./planner-views/board-view.md) | dnd-kit Kanban board implementation guide |
 | [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md) | Roadmap/Timeline view — scoped for Phase 4 |
@@ -91,30 +91,64 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
-### Planner — Phase 3 (GraphQL + Custom Fields + Real-time)
+### Planner — Phase 3 (Custom Fields + Named Views — REST)
 
-> **Status: Blueprint complete — not yet started**
-> See [`blueprint/planner/phase-3.md`](./planner/phase-3.md), [`blueprint/planner-views/graphql-schema.md`](./planner-views/graphql-schema.md), [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md), [`blueprint/planner-views/realtime-sync.md`](./planner-views/realtime-sync.md)
+> **Status: Complete ✅**
+> See [`blueprint/planner/phase-3.md`](./planner/phase-3.md), [`blueprint/planner-views/data-model.md`](./planner-views/data-model.md)
+> Architecture: REST (GraphQL/Lighthouse deferred; no new npm/composer packages needed)
 
 | Area | Status |
 |---|---|
-| Install Lighthouse (`nuwave/lighthouse`) | ❌ TODO |
-| Install Soketi (via Sail) | ❌ TODO |
-| Install `laravel-echo` + `pusher-js` | ❌ TODO |
-| Migrations: `planner_fields`, `planner_field_values`, `planner_views` | ❌ TODO |
-| Models: `PlannerField`, `PlannerFieldValue`, `PlannerView` | ❌ TODO |
-| `PlannerSystemFieldsSeeder` | ❌ TODO |
-| GraphQL schema (`graphql/schema.graphql`) | ❌ TODO |
-| GraphQL resolvers (queries, mutations, subscriptions) | ❌ TODO |
-| Broadcast events + observers | ❌ TODO |
-| Channel authorization (`routes/channels.php`) | ❌ TODO |
-| Pinia `usePlannerStore` with optimistic mutation map | ❌ TODO |
-| `useOptimisticUpdate` composable | ❌ TODO |
-| `usePlannerRealtime` composable (Echo subscription) | ❌ TODO |
-| `PlannerFieldManager` — custom field CRUD | ❌ TODO |
-| Custom field columns in Table view | ❌ TODO |
-| Custom field grouping in Board view | ❌ TODO |
-| `planner_views` saved/named views (replace localStorage) | ❌ TODO |
+| Migration: `planner_fields` | ✅ Done |
+| Migration: `planner_field_values` | ✅ Done |
+| Migration: `planner_views` | ✅ Done |
+| Model: `PlannerField` | ✅ Done |
+| Model: `PlannerFieldValue` | ✅ Done |
+| Model: `PlannerView` | ✅ Done |
+| `PlannerSystemFieldsSeeder` (7 system fields per user) | ✅ Done |
+| Add `fieldValues` / `fields` / `plannerViews` relations to `Event` + `Milestone` | ✅ Done |
+| `PlannerFieldController` (index, store, update, destroy, storeOption, destroyOption) | ✅ Done |
+| `PlannerFieldValueController` (upsert, destroy) | ✅ Done |
+| `PlannerViewController` (index, store, update, destroy, activate) | ✅ Done |
+| Form requests for field + view CRUD | ✅ Done |
+| Policies: `PlannerFieldPolicy`, `PlannerViewPolicy` | ✅ Done |
+| Register routes in `routes/planner.php` | ✅ Done |
+| Run `sail artisan wayfinder:generate --with-form` | ✅ Done |
+| `PlannerController` — add deferred `fields` + `savedViews` Inertia props | ✅ Done |
+| TS types: `PlannerField`, `PlannerFieldValue`, `PlannerView` | ✅ Done |
+| `usePlannerStore` — rename `PlannerView` → `PlannerViewMode` to avoid type collision | ✅ Done |
+| `PlannerViewTabs` component (tab strip + create button) | ✅ Done |
+| `PlannerFieldManager` component (drawer) | ✅ Done |
+| Custom field columns in `PlannerTableView` | ✅ Done |
+| Custom field group-by in `PlannerBoardView` | ✅ Done |
+| Pest tests — field CRUD, field values, view persistence, policy, controller | ✅ Done (99 tests, 262 assertions) |
+
+---
+
+### Planner — Pagination (List + Table Views)
+
+> **Status: In progress 🔄**
+> Adds per-page selector and paginator controls to list and table views.
+
+**Design decisions:**
+- `per_page` accepted as query param (10 / 20 / 50 / 100, default 20)
+- **List view**: manual "Load more" button (not auto-scroll) — appends pages client-side; per-page controls batch size
+- **Table view**: traditional paginator footer (prev / next, page X of Y, showing X–Y of Z); navigates pages (replace, no append)
+- Client-side accumulation in `Index.vue` — no `deepMerge()` on server; watcher resets on filter/milestone change, appends on page > 1
+
+| Area | Status |
+|---|---|
+| Backend: `per_page` request param, `perPage` Inertia prop | ✅ Done |
+| Remove server-side `deepMerge()` — client-side accumulation instead | ✅ Done |
+| `Index.vue` — `allListEvents` watcher, `changePerPage()`, `tableGoToPage()` | ✅ Done |
+| Per-page selector in filter bar trailing slot (10 / 20 / 50 / 100) | ✅ Done |
+| `PlannerEventList` — spinner on Load more button | ✅ Done |
+| `PlannerTableView` — accept `PaginatedData`, add pagination footer | ✅ Done |
+
+**Future (not yet implemented):**
+- Save per-page preference per user to DB/localStorage
+- Per-page selector on Board view (card count per column)
+- URL-based page param for shareable paginated URLs
 
 ---
 

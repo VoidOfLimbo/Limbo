@@ -78,47 +78,42 @@ function handleKeydown(e: KeyboardEvent) {
 
 <template>
     <div class="space-y-1.5">
-        <!-- Selected tag chips -->
-        <div
-            v-if="selectedTags.length"
-            class="flex flex-wrap gap-1.5"
-        >
-            <span
-                v-for="tag in selectedTags"
-                :key="tag.id"
-                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border"
-                :style="tag.color
-                    ? { backgroundColor: `${tag.color}25`, color: tag.color, borderColor: `${tag.color}50` }
-                    : undefined"
-                :class="!tag.color ? 'bg-secondary text-secondary-foreground border-border' : ''"
-            >
-                {{ tag.name }}
-                <button
-                    type="button"
-                    class="hover:opacity-70 transition-opacity focus:outline-none"
-                    @click="remove(tag.id)"
-                >
-                    <X class="size-2.5" />
-                </button>
-            </span>
-        </div>
-
         <!-- Combobox -->
         <ComboboxRoot
             v-model:open="open"
             :filter-function="() => filteredTags"
             ignore-filter
         >
-            <!-- Input trigger -->
+            <!-- Input trigger — chips + text input together -->
             <div
-                class="flex items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm
-                       focus-within:ring-1 focus-within:ring-ring transition-shadow"
+                class="flex flex-wrap items-center gap-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm
+                       focus-within:ring-1 focus-within:ring-ring transition-shadow min-h-9"
             >
+                <!-- Selected tag chips inside the input -->
+                <span
+                    v-for="tag in selectedTags"
+                    :key="tag.id"
+                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border shrink-0"
+                    :style="tag.color
+                        ? { backgroundColor: `${tag.color}25`, color: tag.color, borderColor: `${tag.color}50` }
+                        : undefined"
+                    :class="!tag.color ? 'bg-secondary text-secondary-foreground border-border' : ''"
+                >
+                    {{ tag.name }}
+                    <button
+                        type="button"
+                        class="hover:opacity-70 transition-opacity focus:outline-none"
+                        @click.stop="remove(tag.id)"
+                    >
+                        <X class="size-2.5" />
+                    </button>
+                </span>
+
                 <TagIcon class="size-3.5 shrink-0 text-muted-foreground" />
                 <ComboboxInput
                     v-model="search"
                     placeholder="Add tags…"
-                    class="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-xs"
+                    class="flex-1 min-w-20 bg-transparent outline-none placeholder:text-muted-foreground text-xs"
                     @keydown="handleKeydown"
                     @focus="open = true"
                 />

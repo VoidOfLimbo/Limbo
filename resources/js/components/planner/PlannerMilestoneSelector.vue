@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
-import { ChevronDown, ChevronRight, CalendarRange, Plus, LayoutList, Group } from 'lucide-vue-next'
+import { router, usePage } from '@inertiajs/vue3'
+import { ChevronDown, ChevronRight, CalendarRange, CalendarDays, CalendarClock, Plus, LayoutList, Group, Activity, Flag, Clock, Eye, Timer, AlertTriangle, Lock, CheckCircle2, Edit2 } from 'lucide-vue-next'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { PlannerMilestone } from '@/types/planner'
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import type { PlannerMilestone, GroupByKey } from '@/types/planner'
 
 const props = defineProps<{
     milestones: PlannerMilestone[]
     activeMilestoneId: string | null
     currentFilters: Record<string, unknown>
+    groupBy: GroupByKey
 }>()
 
 const emit = defineEmits<{
-    createMilestone: []
     openExplorer: []
+    'update:groupBy': [value: GroupByKey]
+    edit: [milestone: PlannerMilestone]
+    createEvent: []
 }>()
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -23,13 +28,16 @@ const open = ref(false)
 const search = ref('')
 
 // ── Group by ─────────────────────────────────────────────────────────────────
-type GroupByKey = 'quarter' | 'status' | 'priority'
-const GROUP_OPTIONS: { value: GroupByKey; label: string }[] = [
-    { value: 'quarter', label: 'Quarter' },
-    { value: 'status', label: 'Status' },
-    { value: 'priority', label: 'Priority' },
+
+const GROUP_OPTIONS: { value: GroupByKey; label: string; icon: unknown }[] = [
+    { value: 'quarter', label: 'Quarter', icon: CalendarRange },
+    { value: 'month', label: 'Month', icon: CalendarDays },
+    { value: 'status', label: 'Status', icon: Activity },
+    { value: 'priority', label: 'Priority', icon: Flag },
+    { value: 'deadline', label: 'Deadline', icon: CalendarClock },
+    { value: 'visibility', label: 'Visibility', icon: Eye },
+    { value: 'duration', label: 'Duration', icon: Timer },
 ]
-const groupBy = ref<GroupByKey>('quarter')
 const showGroupPicker = ref(false)
 
 // collapsed group keys
@@ -65,21 +73,40 @@ function getQuarter(dateStr: string | null | undefined): string {
     return `Q${q} ${d.getFullYear()}`
 }
 
+function getMonth(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Unscheduled'
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return 'Unscheduled'
+    return d.toLocaleString('default', { month: 'short', year: 'numeric' })
+}
+
 function getGroupKey(m: PlannerMilestone, by: GroupByKey): string {
     if (by === 'quarter') return getQuarter(m.end_at ?? m.start_at)
+    if (by === 'month') return getMonth(m.end_at ?? m.start_at)
     if (by === 'status') return m.status.charAt(0).toUpperCase() + m.status.slice(1)
     if (by === 'priority') return m.priority.charAt(0).toUpperCase() + m.priority.slice(1)
+    if (by === 'deadline') return m.deadline_type === 'hard' ? 'Hard deadline' : 'Soft deadline'
+    if (by === 'visibility') return m.visibility === 'shared' ? 'Shared' : 'Private'
+    if (by === 'duration') return m.duration_source === 'manual' ? 'Manual' : 'Derived'
     return 'Other'
 }
 
 const STATUS_ORDER = ['Active', 'Paused', 'Completed', 'Cancelled']
 const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low']
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 function sortKey(label: string, by: GroupByKey): string {
     if (by === 'quarter') {
         if (label === 'Unscheduled') return 'Z'
         const [q, year] = label.split(' ')
         return `${year}-${q.slice(1).padStart(2, '0')}`
+    }
+    if (by === 'month') {
+        if (label === 'Unscheduled') return 'Z'
+        const [mon, year] = label.split(' ')
+        const mi = MONTH_NAMES.indexOf(mon)
+        return `${year}-${String(mi + 1).padStart(2, '0')}`
     }
     if (by === 'status') {
         const i = STATUS_ORDER.indexOf(label)
@@ -101,27 +128,30 @@ const filtered = computed(() => {
 const grouped = computed(() => {
     const map = new Map<string, PlannerMilestone[]>()
     for (const m of filtered.value) {
-        const key = getGroupKey(m, groupBy.value)
+        const key = getGroupKey(m, props.groupBy)
         if (!map.has(key)) map.set(key, [])
         map.get(key)!.push(m)
     }
     return [...map.entries()].sort(([a], [b]) =>
-        sortKey(a, groupBy.value).localeCompare(sortKey(b, groupBy.value)),
+        sortKey(a, props.groupBy).localeCompare(sortKey(b, props.groupBy)),
     )
 })
 
 // reset collapsed groups when groupBy changes
 function setGroupBy(val: GroupByKey) {
-    groupBy.value = val
+    emit('update:groupBy', val)
     collapsed.value = new Set()
     showGroupPicker.value = false
 }
+
+const page = usePage()
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 function navigateTo(milestoneId: string | null) {
     open.value = false
     search.value = ''
-    router.visit(window.location.pathname, {
+    const pathname = page.url.split('?')[0]
+    router.visit(pathname, {
         data: { ...props.currentFilters, milestone: milestoneId ?? 'backlog' },
         preserveScroll: false,
         preserveState: false,
@@ -129,17 +159,53 @@ function navigateTo(milestoneId: string | null) {
     })
 }
 
-// ── Status colors ─────────────────────────────────────────────────────────────
+// ── Status colors (popover list items) ───────────────────────────────────────
 const statusClass: Record<string, string> = {
     active: 'bg-blue-500/20 text-blue-700 dark:text-blue-300',
     completed: 'bg-green-500/20 text-green-700 dark:text-green-300',
     paused: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300',
     cancelled: 'bg-red-500/20 text-red-700 dark:text-red-300',
 }
+
+// ── Header stats computed (merged from PlannerMilestoneHeader) ─────────────────────
+const statusVariant = computed((): 'default' | 'secondary' | 'outline' | 'destructive' => {
+    const map: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+        active: 'default',
+        completed: 'secondary',
+        paused: 'outline',
+        cancelled: 'destructive',
+    }
+    return map[activeMilestone.value?.status ?? ''] ?? 'outline'
+})
+
+const priorityClass = computed(() => {
+    const map: Record<string, string> = {
+        critical: 'text-destructive',
+        high: 'text-orange-500',
+        medium: 'text-yellow-500',
+        low: 'text-muted-foreground',
+    }
+    return map[activeMilestone.value?.priority ?? ''] ?? ''
+})
+
+const deadlineLabel = computed(() => {
+    if (!activeMilestone.value?.end_at) return null
+    const d = new Date(activeMilestone.value.end_at)
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+})
+
+const progressBarColor = computed(() => {
+    if (activeMilestone.value?.is_breached) return 'bg-destructive'
+    if ((activeMilestone.value?.progress ?? 0) >= 100) return 'bg-green-500'
+    return 'bg-primary'
+})
 </script>
 
 <template>
-    <div class="flex items-center gap-2 border-b border-border px-4 py-2 shrink-0">
+    <div
+        class="relative flex items-center gap-2 border-b border-border px-4 py-2 shrink-0 bg-card/50"
+        :style="activeMilestone?.color ? { borderLeftColor: activeMilestone.color, borderLeftWidth: '3px' } : {}"
+    >
         <!-- Milestone dropdown trigger -->
         <Popover v-model:open="open">
             <PopoverTrigger as-child>
@@ -149,12 +215,6 @@ const statusClass: Record<string, string> = {
                 >
                     <!-- Active milestone indicator -->
                     <template v-if="activeMilestone">
-                        <span
-                            v-if="activeMilestone.color"
-                            class="size-2 rounded-full shrink-0"
-                            :style="{ backgroundColor: activeMilestone.color }"
-                        />
-                        <CalendarRange v-else class="size-3.5 shrink-0 text-muted-foreground" />
                         <span class="truncate font-medium">{{ activeMilestone.title }}</span>
                         <!-- Mini arc -->
                         <svg class="size-3.5 shrink-0 -rotate-90" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -170,7 +230,6 @@ const statusClass: Record<string, string> = {
                         <span class="text-xs text-muted-foreground shrink-0">{{ activeMilestone.progress }}%</span>
                     </template>
                     <template v-else>
-                        <CalendarRange class="size-3.5 shrink-0 text-muted-foreground" />
                         <span class="text-muted-foreground">Backlog</span>
                     </template>
                     <ChevronDown class="size-3.5 shrink-0 text-muted-foreground ml-1" :class="open ? 'rotate-180' : ''" style="transition: transform 0.15s" />
@@ -194,7 +253,7 @@ const statusClass: Record<string, string> = {
                             :class="showGroupPicker ? 'bg-accent text-foreground' : ''"
                             @click.stop="showGroupPicker = !showGroupPicker"
                         >
-                            <Group class="size-3" />
+                            <component :is="GROUP_OPTIONS.find(o => o.value === groupBy)?.icon" class="size-3" />
                             {{ GROUP_OPTIONS.find(o => o.value === groupBy)?.label }}
                         </button>
                         <!-- Group picker dropdown (inline, no nested popover) -->
@@ -209,10 +268,7 @@ const statusClass: Record<string, string> = {
                                 :class="groupBy === opt.value ? 'text-foreground font-medium' : 'text-muted-foreground'"
                                 @click.stop="setGroupBy(opt.value)"
                             >
-                                <span
-                                    class="size-1.5 rounded-full shrink-0"
-                                    :class="groupBy === opt.value ? 'bg-primary' : 'bg-muted-foreground/40'"
-                                />
+                                <component :is="opt.icon" class="size-3 shrink-0" />
                                 {{ opt.label }}
                             </button>
                         </div>
@@ -240,20 +296,16 @@ const statusClass: Record<string, string> = {
                             <button
                                 v-for="m in items"
                                 :key="m.id"
-                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors"
+                                class="relative w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground text-left transition-colors overflow-hidden"
                                 :class="activeMilestoneId === m.id ? 'bg-accent/60 font-medium' : ''"
+                                :style="m.color ? { borderLeftColor: m.color, borderLeftWidth: '3px' } : {}"
                                 @click="navigateTo(m.id)"
                             >
-                                <!-- Color dot -->
-                                <span
-                                    v-if="m.color"
-                                    class="size-2 rounded-full shrink-0 ml-4"
-                                    :style="{ backgroundColor: m.color }"
-                                />
-                                <CalendarRange v-else class="size-3 shrink-0 text-muted-foreground ml-4" />
+                                <!-- color bg tint -->
+                                <div v-if="m.color" class="absolute inset-0 pointer-events-none" :style="{ backgroundColor: m.color + '0D' }" />
 
                                 <!-- Title -->
-                                <span class="flex-1 truncate">{{ m.title }}</span>
+                                <span class="relative flex-1 truncate ml-0.5">{{ m.title }}</span>
 
                                 <!-- Breach dot -->
                                 <span v-if="m.is_breached" class="size-1.5 rounded-full bg-destructive shrink-0" />
@@ -277,6 +329,14 @@ const statusClass: Record<string, string> = {
                                         :class="m.is_breached ? 'stroke-destructive' : m.progress >= 100 ? 'stroke-green-500' : ''"
                                     />
                                 </svg>
+
+                                <!-- Event counts: per-status + total -->
+                                <span class="flex items-center gap-1 shrink-0">
+                                    <span v-if="m.in_progress_events_count" class="text-[10px] tabular-nums text-violet-400">{{ m.in_progress_events_count }}</span>
+                                    <span v-if="m.upcoming_events_count" class="text-[10px] tabular-nums text-blue-400">{{ m.upcoming_events_count }}</span>
+                                    <span v-if="m.draft_events_count" class="text-[10px] tabular-nums text-muted-foreground/60">{{ m.draft_events_count }}</span>
+                                    <span class="text-xs tabular-nums text-muted-foreground ml-0.5">/ {{ m.total_events_count }}</span>
+                                </span>
                             </button>
                         </template>
                     </template>
@@ -312,13 +372,113 @@ const statusClass: Record<string, string> = {
             </PopoverContent>
         </Popover>
 
+        <!-- Status + flags inline (milestone active) -->
+        <template v-if="activeMilestone">
+            <Badge :variant="statusVariant" class="capitalize text-[10px] h-5 px-1.5 shrink-0">{{ activeMilestone.status }}</Badge>
+            <Tooltip v-if="activeMilestone.deadline_type === 'hard'">
+                <TooltipTrigger as-child>
+                    <Lock class="size-3 shrink-0 text-muted-foreground/50 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>Hard deadline — events cannot exceed this date</TooltipContent>
+            </Tooltip>
+            <Tooltip v-if="activeMilestone.is_breached">
+                <TooltipTrigger as-child>
+                    <AlertTriangle class="size-3.5 shrink-0 text-destructive cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>An event exceeds this deadline. Adjust events or convert to a soft deadline.</TooltipContent>
+            </Tooltip>
+        </template>
+
         <!-- Spacer -->
         <div class="flex-1" />
 
-        <!-- New milestone button (always visible) -->
-        <Button variant="outline" size="sm" class="h-8 gap-1.5 shrink-0" @click="emit('createMilestone')">
-            <Plus class="size-3.5" />
-            <span class="hidden sm:inline text-xs">New milestone</span>
+        <!-- Stats + actions (milestone active) -->
+        <template v-if="activeMilestone">
+            <div class="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="tabular-nums font-medium cursor-help w-8 text-right" :class="{ 'text-destructive': activeMilestone.is_breached }">
+                            {{ activeMilestone.progress }}%
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ activeMilestone.progress_source === 'manual' ? 'Manual' : 'Derived' }} progress</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="flex items-center gap-1 cursor-help">
+                            <CheckCircle2 class="size-3" />
+                            {{ activeMilestone.completed_events_count }}/{{ activeMilestone.total_events_count }}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ activeMilestone.completed_events_count }} of {{ activeMilestone.total_events_count }} events completed</TooltipContent>
+                </Tooltip>
+                <Tooltip v-if="deadlineLabel">
+                    <TooltipTrigger as-child>
+                        <span class="flex items-center gap-1 cursor-help" :class="{ 'text-destructive font-medium': activeMilestone.is_breached }">
+                            <Clock class="size-3" />
+                            {{ deadlineLabel }}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ activeMilestone.deadline_type === 'hard' ? 'Hard' : 'Soft' }} deadline</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="capitalize cursor-help" :class="priorityClass">{{ activeMilestone.priority }}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>Priority</TooltipContent>
+                </Tooltip>
+            </div>
+            <div class="flex items-center gap-1">
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <Button variant="ghost" size="icon-sm" @click="emit('edit', activeMilestone)">
+                            <Edit2 class="size-3.5" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit milestone</TooltipContent>
+                </Tooltip>
+                <Button variant="outline" size="sm" class="h-7 gap-1 text-xs" @click="emit('createEvent')">
+                    <Plus class="size-3.5" />
+                    Add event
+                </Button>
+            </div>
+        </template>
+
+        <!-- Backlog: just Add event -->
+        <template v-if="!activeMilestone">
+            <Button variant="outline" size="sm" class="h-7 gap-1.5 text-xs" @click="emit('createEvent')">
+                <Plus class="size-3.5" />
+                Add event
+            </Button>
+        </template>
+
+        <!-- Progress strip -->
+        <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary/10">
+            <div
+                class="h-full transition-all duration-500"
+                :class="progressBarColor"
+                :style="activeMilestone ? { width: `${Math.min(activeMilestone.progress, 100)}%` } : { width: '0%' }"
+            />
+        </div>
+    </div>
+
+    <!-- Breach warning callout -->
+    <div
+        v-if="activeMilestone?.is_breached"
+        class="flex items-center gap-2 px-4 py-2 bg-destructive/5 border-b border-destructive/20 text-destructive text-xs"
+    >
+        <AlertTriangle class="size-3.5 shrink-0" />
+        <span class="flex-1">
+            <span class="font-medium">{{ activeMilestone.breach_count }} event{{ activeMilestone.breach_count !== 1 ? 's' : '' }} exceed{{ activeMilestone.breach_count === 1 ? 's' : '' }} this hard deadline.</span>
+            Adjust event dates, move events to backlog, or convert this milestone to a soft deadline.
+        </span>
+        <Button
+            variant="outline"
+            size="sm"
+            class="h-6 px-2 text-[11px] border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 shrink-0"
+            @click="emit('edit', activeMilestone)"
+        >
+            Resolve
         </Button>
     </div>
 </template>

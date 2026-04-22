@@ -60,6 +60,22 @@ class Milestone extends Model
         return $this->morphToMany(Tag::class, 'taggable');
     }
 
+    public function fields(): HasMany
+    {
+        return $this->hasMany(PlannerField::class);
+    }
+
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(PlannerFieldValue::class, 'item_id')
+            ->where('item_type', self::class);
+    }
+
+    public function plannerViews(): HasMany
+    {
+        return $this->hasMany(PlannerView::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     public function scopeForUser(Builder $query, int|string $userId): void

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3'
-import { ref, watch, nextTick } from 'vue'
+import { Loader2 } from 'lucide-vue-next'
+import { ref, watch, nextTick, computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { reorder as reorderEvents } from '@/actions/App/Http/Controllers/Planner/EventController'
 import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
@@ -13,7 +13,23 @@ const props = defineProps<{
     events: PaginatedData<PlannerEvent> | undefined
     showMilestone?: boolean
     loading?: boolean
+    columns?: 1 | 2 | 3 | 4
 }>()
+
+// Split events into N columns for multi-column layout
+const columnChunks = computed(() => {
+    const cols = props.columns ?? 1
+
+    if (cols <= 1 || !localEvents.value.length) {
+        return [localEvents.value]
+    }
+
+    const chunks: PlannerEvent[][] = Array.from({ length: cols }, () => [])
+
+    localEvents.value.forEach((e, i) => chunks[i % cols].push(e))
+
+    return chunks
+})
 
 const emit = defineEmits<{
     edit: [event: PlannerEvent]
@@ -50,13 +66,15 @@ function onStart() {
 function onEnd() {
     isDragging.value = false
     const ids = localEvents.value.map((e) => e.id)
-    const def = reorderEvents()
-    router.visit(def.url, {
-        method: def.method,
-        data: { ids },
-        preserveScroll: true,
-        preserveState: true,
-        only: [],
+    const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
+    fetch(reorderEvents().url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({ ids }),
     })
 }
 </script>
@@ -74,9 +92,11 @@ function onEnd() {
             </div>
         </template>
 
-        <!-- Event rows (draggable) -->
+        <!-- Event rows -->
         <template v-else-if="events.data.length">
+            <!-- Single-column: draggable -->
             <VueDraggable
+                v-if="(columns ?? 1) === 1"
                 v-model="localEvents"
                 handle=".drag-handle"
                 ghost-class="opacity-30"
@@ -99,6 +119,36 @@ function onEnd() {
                 />
             </VueDraggable>
 
+            <!-- Multi-column grid -->
+            <div
+                v-else
+                class="grid flex-1 items-start gap-x-0"
+                :class="{
+                    'grid-cols-2': columns === 2,
+                    'grid-cols-3': columns === 3,
+                    'grid-cols-4': columns === 4,
+                }"
+            >
+                <div
+                    v-for="(chunk, ci) in columnChunks"
+                    :key="ci"
+                    class="flex flex-col border-r border-border/50 last:border-r-0"
+                >
+                    <PlannerEventRow
+                        v-for="event in chunk"
+                        :key="event.id"
+                        :event="event"
+                        :show-milestone="showMilestone"
+                        @edit="emit('edit', $event)"
+                        @snooze="emit('snooze', $event)"
+                        @move-to-backlog="emit('moveToBacklog', $event)"
+                        @delete="emit('delete', $event)"
+                        @toggle-status="emit('toggleStatus', $event)"
+                        @duplicate="emit('duplicate', $event)"
+                    />
+                </div>
+            </div>
+
             <!-- Load more (pagination) -->
             <div v-if="events.next_page_url" class="flex justify-center py-4">
                 <Button
@@ -107,6 +157,7 @@ function onEnd() {
                     :disabled="loading"
                     @click="emit('loadMore')"
                 >
+                    <Loader2 v-if="loading" class="size-3.5 animate-spin" />
                     {{ loading ? 'Loading…' : 'Load more' }}
                 </Button>
             </div>

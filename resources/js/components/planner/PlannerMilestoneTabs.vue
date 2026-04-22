@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import { Plus, CalendarRange } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
@@ -15,8 +15,10 @@ const emit = defineEmits<{
     createMilestone: []
 }>()
 
+const tabsPage = usePage()
+
 function navigateTo(milestoneId: string | null) {
-    router.visit(window.location.pathname, {
+    router.visit(tabsPage.url.split('?')[0], {
         data: { ...props.currentFilters, milestone: milestoneId ?? undefined },
         preserveScroll: false,
         preserveState: false,

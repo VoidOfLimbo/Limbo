@@ -1,40 +1,36 @@
-# Planner — Phase 3: GraphQL + Custom Fields + Real-time
+# Planner — Phase 3: Custom Fields + Named Views
 
-**Goal:** Replace the REST planner API with Lighthouse GraphQL, add user-defined custom fields (stored in JSONB), persist named view configurations per milestone, and enable real-time sync across tabs/devices via Laravel Echo + WebSockets.
+**Goal:** Add user-defined custom fields (stored in JSONB), persist named view configurations per milestone (replacing `localStorage`), and expose custom field columns in Table view and custom grouping in Board view — all via REST + Inertia.
 
-**Status: Blueprint complete — not yet started ❌**
+> **Architecture decision:** GraphQL (Lighthouse) was evaluated but deferred. REST + Inertia partial reloads handle Calendar and Timeline views equally well, with significantly less complexity. GraphQL may be reconsidered if custom-field query complexity demands it in a future phase.
+> Real-time sync (WebSockets) is also deferred — most useful once collaboration (Phase 6) lands.
+
+**Status: Complete ✅**
 
 **Depends on:** [`blueprint/planner/phase-2.md`](./phase-2.md)
 
 **Implementation docs:**
-- [`blueprint/planner-views/data-model.md`](../planner-views/data-model.md) — New tables: `planner_fields`, `planner_field_values`, `planner_views`
-- [`blueprint/planner-views/graphql-schema.md`](../planner-views/graphql-schema.md) — Lighthouse schema (types, queries, mutations, subscriptions)
-- [`blueprint/planner-views/realtime-sync.md`](../planner-views/realtime-sync.md) — Echo + WebSocket strategy, optimistic update pattern
-- [`blueprint/planner-views/component-tree.md`](../planner-views/component-tree.md) — Full Vue component hierarchy
+- [`blueprint/planner-views/data-model.md`](../planner-views/data-model.md) — Table schemas for `planner_fields`, `planner_field_values`, `planner_views`
+- [`blueprint/planner-views/component-tree.md`](../planner-views/component-tree.md) — Vue component hierarchy
 
 ---
 
 ## Scope
 
-Phase 3 is a significant infrastructure upgrade. It does not remove existing functionality — it layers a new API and data model on top of what Phases 1 and 2 built.
+Phase 3 adds a new data layer on top of Phases 1 and 2. No existing columns are modified, no existing endpoints are changed.
 
-**Key principle:** Inertia + REST remains for page navigation and initial data load. GraphQL handles *all data operations inside the planner views* — queries, mutations, real-time subscriptions.
+**What this phase delivers:**
+1. User-defined custom fields per milestone (or global across all milestones)
+2. Custom field values stored in JSONB — flexible without migrations
+3. Named, persisted view configurations (replace `localStorage` with `planner_views` table)
+4. Custom field columns rendered in Table view
+5. Custom field group-by in Board view
 
 ---
 
-## New Dependencies
+## No New Dependencies
 
-### Backend
-| Package | Purpose |
-|---|---|
-| `nuwave/lighthouse` | Laravel GraphQL server (schema-first SDL) |
-| Soketi (Docker service in `compose.yaml`) | Self-hosted WebSocket server (Pusher-compatible) |
-
-### Frontend
-| Package | Purpose |
-|---|---|
-| `laravel-echo` | WebSocket client (Pusher protocol) |
-| `pusher-js` | Required peer dependency for Echo Pusher driver |
+No new PHP or npm packages required. Everything is built on the existing stack.
 
 ---
 
@@ -59,92 +55,102 @@ Replaces the `localStorage` view state from Phase 2. Each row stores: `type` (li
 
 ---
 
-## GraphQL API (Lighthouse)
+## REST API
 
-Schema lives at `graphql/schema.graphql`. Key design:
-- `@paginate`, `@where`, `@orderBy` directives for filtering/sorting
-- `@can` directives for policy-driven authorization
-- `@broadcast` on mutations → triggers Echo subscriptions
-- Nested resolvers for `milestone → events → field_values`
+All planner operations stay on existing REST endpoints. Phase 3 adds new endpoints only for the new resources.
 
-→ Full schema: [`blueprint/planner-views/graphql-schema.md`](../planner-views/graphql-schema.md)
+### New endpoints
 
----
+#### `PlannerFieldController`
+```
+GET    /planner/fields                    → list user's fields (system + custom, scoped)
+POST   /planner/fields                    → create custom field
+PUT    /planner/fields/{field}            → update field (name, options, settings, position)
+DELETE /planner/fields/{field}            → delete custom field (system fields: 403)
+POST   /planner/fields/{field}/options    → add a select option
+DELETE /planner/fields/{field}/options/{option} → remove a select option
+```
 
-## Real-time Sync
+#### `PlannerFieldValueController`
+```
+PUT    /planner/field-values/{field}/{itemType}/{itemId}  → upsert a field value
+DELETE /planner/field-values/{field}/{itemType}/{itemId}  → clear a field value
+```
 
-Private channel per user: `private-planner.{userId}`.
+#### `PlannerViewController`
+```
+GET    /planner/views                     → list user's saved views (for milestone or global)
+POST   /planner/views                     → create a named view
+PUT    /planner/views/{view}              → update view config (layout, filters, sorts, group_by)
+DELETE /planner/views/{view}              → delete a view
+POST   /planner/views/{view}/activate     → set as default for the milestone
+```
 
-On any mutation (create/update/delete event or field value), the server:
-1. Persists the change
-2. Dispatches a `ShouldBroadcast` event on the user's channel
-
-The frontend:
-1. Applies the change optimistically in Pinia before the server responds
-2. Subscribes to the private channel via Echo on mount
-3. Reconciles server-confirmed state with local state on broadcast
-4. Rolls back if the server returns an error
-
-→ Full strategy: [`blueprint/planner-views/realtime-sync.md`](../planner-views/realtime-sync.md)
+### `PlannerController` changes
+- `fields` prop added to page data (Inertia::defer) — loads system + custom fields for the milestone
+- `views` prop added — loads saved views for the milestone
+- Active view ID comes from `?view=` query param (UUID) instead of only `localStorage`
 
 ---
 
 ## Frontend Changes
 
-### Pinia store upgrade
-`usePlannerStore` gains:
-- `fieldSchema: PlannerField[]` — loaded once on mount
-- `pendingMutations: Map<string, OptimisticMutation>` — tracks in-flight changes for rollback
-- `useOptimisticUpdate` composable — wraps any mutation with optimistic apply + rollback
+### Pinia store (`usePlannerStore`)
+- Add `activeViewId: string | null` — synced with `?view=` URL param; falls back to `localStorage` for "last used"
+- `fields: PlannerField[]` — loaded from Inertia deferred prop
+- `savedViews: PlannerView[]` — loaded from Inertia deferred prop
 
-### New composables
-- `usePlannerRealtime` — subscribes to the private Echo channel, patches Pinia on broadcast
-- `useOptimisticUpdate` — generic optimistic mutation wrapper
+### New components
+- `PlannerViewTabs` — tab strip above the event list showing saved view names; "+" to create a new view
+- `PlannerFieldManager` — drawer for creating/editing/deleting custom fields
 
-### Table view additions (Phase 3 column layer)
-- Custom field columns rendered alongside system columns
-- Column visibility / reorder / resize (persisted to `planner_views`)
-- `PlannerFieldManager` — UI for creating/editing/deleting custom fields (drawer)
+### Table view additions
+- Custom field columns rendered alongside system columns (from `fields` prop)
+- Column visibility / ordering persisted via `PUT /planner/views/{view}`
 
 ### Board view additions
 - Group by any single-select custom field (not just `status`)
-- Column reorder persisted to `planner_views`
+- Group-by selection persisted to the active `planner_view`
 
 ---
 
 ## Checklist
 
-### Infrastructure
-- [ ] Install `nuwave/lighthouse` — `composer require nuwave/lighthouse`
-- [ ] Add Soketi service to `compose.yaml`
-- [ ] Install `laravel-echo` + `pusher-js` — `npm install laravel-echo pusher-js`
-- [ ] Configure `config/broadcasting.php` with Pusher/Soketi driver
-- [ ] Add `BROADCAST_CONNECTION=pusher` + Soketi env vars to `.env`
-
 ### Database
-- [ ] Migration: `planner_fields`
-- [ ] Migration: `planner_field_values`
-- [ ] Migration: `planner_views`
-- [ ] Models: `PlannerField`, `PlannerFieldValue`, `PlannerView`
-- [ ] `PlannerSystemFieldsSeeder` — seeds the 7 built-in system fields
+- [x] Migration: `planner_fields`
+- [x] Migration: `planner_field_values`
+- [x] Migration: `planner_views`
+- [x] Model: `PlannerField`
+- [x] Model: `PlannerFieldValue`
+- [x] Model: `PlannerView`
+- [x] `PlannerSystemFieldsSeeder` — seeds the 7 built-in system fields per user
+- [x] Add `fieldValues` relation to `Event` and `Milestone` models
+- [x] Add `fields` + `plannerViews` relations to `Milestone` model
 
-### GraphQL API
-- [ ] `graphql/schema.graphql` — full schema
-- [ ] Resolver classes for all queries and mutations
-- [ ] Subscription support — `PlannerItemUpdated`, `PlannerFieldValueUpdated`
-- [ ] Broadcast events + model observers
-- [ ] Channel authorization (`routes/channels.php`)
+### Backend (REST)
+- [x] `PlannerFieldController` (index, store, update, destroy, storeOption, destroyOption)
+- [x] `PlannerFieldValueController` (upsert, destroy)
+- [x] `PlannerViewController` (index, store, update, destroy, activate)
+- [x] Form requests: `StorePlannerFieldRequest`, `UpdatePlannerFieldRequest`, `UpsertPlannerFieldValueRequest`, `StorePlannerViewRequest`, `UpdatePlannerViewRequest`
+- [x] Policies: `PlannerFieldPolicy`, `PlannerViewPolicy`
+- [x] Register new routes in `routes/planner.php`
+- [x] Run `sail artisan wayfinder:generate --with-form`
+- [x] `PlannerController` — add `fields` + `savedViews` as deferred Inertia props
 
 ### Frontend
-- [ ] Upgrade `usePlannerStore` — add `fieldSchema`, `pendingMutations`
-- [ ] `useOptimisticUpdate` composable
-- [ ] `usePlannerRealtime` composable (Echo subscription + Pinia reconcile)
-- [ ] `PlannerFieldManager` — custom field CRUD drawer
-- [ ] Custom field columns in Table view
-- [ ] Custom field grouping in Board view
-- [ ] Named/saved views — replace `localStorage` with `planner_views` (view tabs in selector)
+- [x] TypeScript types: `PlannerField`, `PlannerFieldValue`, `PlannerView`, `PlannerFieldOption` in `resources/js/types/planner.ts`
+- [x] Rename `PlannerView` type alias in store to `PlannerViewMode` to avoid collision
+- [x] `PlannerViewTabs` component (tab strip + create button)
+- [x] `PlannerFieldManager` component (drawer — create/edit/delete fields)
+- [x] Custom field columns in `PlannerTableView` (deferred `fields` prop, custom cols appended after system cols)
+- [x] Custom field group-by in `PlannerBoardView`
+- [x] Wire `PlannerViewTabs` into `Planner/Index.vue`
 
 ### Testing
-- [ ] GraphQL query/mutation tests (Pest)
-- [ ] Broadcast event tests
-- [ ] Optimistic rollback tests
+- [x] Can create / update / delete a custom field
+- [x] Cannot modify system fields
+- [x] Can upsert / clear a field value
+- [x] Policy: cannot access another user's fields or views
+- [x] Can create / update / delete a named view
+- [x] `PlannerController` returns `fields` and `views` props (deferred — verified via dedicated endpoint isolation tests)
+

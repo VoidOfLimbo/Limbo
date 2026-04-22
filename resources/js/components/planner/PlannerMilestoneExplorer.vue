@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import { CalendarRange, X, Plus, Search } from 'lucide-vue-next'
 import {
     Drawer,
@@ -86,9 +86,11 @@ const priorityClass: Record<string, string> = {
 }
 
 // ── Navigate ──────────────────────────────────────────────────────────────────
+const explorerPage = usePage()
+
 function navigateTo(milestoneId: string | null) {
     emit('update:open', false)
-    router.visit(window.location.pathname, {
+    router.visit(explorerPage.url.split('?')[0], {
         data: { ...props.currentFilters, milestone: milestoneId ?? undefined },
         preserveScroll: false,
         preserveState: false,

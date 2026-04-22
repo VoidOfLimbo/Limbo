@@ -21,7 +21,7 @@ const emit = defineEmits<{
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
-}>()()
+}>()
 </script>
 
 <template>

@@ -55,4 +55,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(Tag::class);
     }
+
+    public function plannerFields(): HasMany
+    {
+        return $this->hasMany(PlannerField::class);
+    }
+
+    public function plannerViews(): HasMany
+    {
+        return $this->hasMany(PlannerView::class);
+    }
 }

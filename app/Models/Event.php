@@ -93,6 +93,12 @@ class Event extends Model
         return $this->hasMany(EventDependency::class);
     }
 
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(PlannerFieldValue::class, 'item_id')
+            ->where('item_type', self::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
 
     public function scopeActive(Builder $query): void

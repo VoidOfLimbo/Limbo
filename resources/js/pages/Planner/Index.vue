@@ -1,26 +1,31 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3'
-import { ref, computed } from 'vue'
+import { Head, usePage, setLayoutProps } from '@inertiajs/vue3'
+import { ref, computed, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useElementSize } from '@vueuse/core'
 import { toast } from 'vue-sonner'
 import { planner as plannerRoute } from '@/routes'
 import PlannerMilestoneSelector from '@/components/planner/PlannerMilestoneSelector.vue'
 import PlannerMilestoneExplorer from '@/components/planner/PlannerMilestoneExplorer.vue'
-import PlannerMilestoneHeader from '@/components/planner/PlannerMilestoneHeader.vue'
 import PlannerFilters from '@/components/planner/PlannerFilters.vue'
 import PlannerEventList from '@/components/planner/PlannerEventList.vue'
 import PlannerEventDrawer from '@/components/planner/PlannerEventDrawer.vue'
 import PlannerMilestoneDrawer from '@/components/planner/PlannerMilestoneDrawer.vue'
 import PlannerSnoozePopover from '@/components/planner/PlannerSnoozePopover.vue'
 import PlannerViewSwitcher from '@/components/planner/PlannerViewSwitcher.vue'
+import PlannerViewTabs from '@/components/planner/PlannerViewTabs.vue'
+import PlannerFieldManager from '@/components/planner/PlannerFieldManager.vue'
 import PlannerTableView from '@/components/planner/PlannerTableView.vue'
 import PlannerBoardView from '@/components/planner/PlannerBoardView.vue'
+import PlannerMilestoneDashboard from '@/components/planner/PlannerMilestoneDashboard.vue'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { destroy, snooze as snoozeEvent, update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
 import { usePlannerFilters } from '@/composables/planner/usePlannerFilters'
 import { usePlannerStore } from '@/stores/planner'
-import type { PaginatedData, PlannerEvent, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag } from '@/types/planner'
+import type { PaginatedData, PlannerEvent, PlannerField, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag, PlannerView, GroupByKey } from '@/types/planner'
 
 defineOptions({
     layout: {
@@ -31,26 +36,135 @@ defineOptions({
 const props = defineProps<{
     milestones: PlannerMilestone[]
     activeMilestoneId: string | null
+    showingDashboard: boolean
     filters: PlannerFilterValues
+    perPage?: number
     events?: PaginatedData<PlannerEvent>
     tags?: PlannerTag[]
+    fields?: PlannerField[]
+    savedViews?: PlannerView[]
 }>()
 
-// ── Active milestone object ──────────────────────────────────────────────────
+// ── Active milestone object ────────────────────────────────────────────────────────────────
 const activeMilestone = computed(() =>
     props.milestones.find((m) => m.id === props.activeMilestoneId) ?? null,
 )
 
+// ── Dynamic breadcrumbs ────────────────────────────────────────────────────────────────
+watch(
+    [() => props.showingDashboard, () => props.activeMilestoneId, () => activeMilestone.value],
+    () => {
+        if (props.showingDashboard) {
+            setLayoutProps({ breadcrumbs: [{ title: 'Planner', href: plannerRoute() }] })
+            return
+        }
+        if (props.activeMilestoneId === null) {
+            setLayoutProps({
+                breadcrumbs: [
+                    { title: 'Planner', href: plannerRoute() },
+                    { title: 'Backlog' },
+                ],
+            })
+            return
+        }
+        const milestone = activeMilestone.value
+        if (!milestone) return
+        setLayoutProps({
+            breadcrumbs: [
+                { title: 'Planner', href: plannerRoute() },
+                { title: milestone.title },
+            ],
+        })
+    },
+    { immediate: true },
+)
+
+// ── Shared group-by state (dashboard tabs ↔ selector popup) ──────────────────
+const dashboardGroupBy = ref<GroupByKey>('status')
+
 // ── View store ───────────────────────────────────────────────────────────────
 const plannerStore = usePlannerStore()
 
+// ── List columns ─────────────────────────────────────────────────────────────
+const listViewport = ref<HTMLElement | null>(null)
+const { width: listViewportWidth } = useElementSize(listViewport)
+const maxListCols = computed(() => Math.max(1, Math.min(4, Math.floor(listViewportWidth.value / 240))) as 1 | 2 | 3 | 4)
+const listColumns = ref<1 | 2 | 3 | 4>(1)
+watch(maxListCols, (max) => {
+    if (listColumns.value > max) listColumns.value = max
+}, { immediate: true })
+const activeViewId = ref<string | null>(null)
+const fieldManagerOpen = ref(false)
+const page = usePage()
+
+// ── Per-page preference (localStorage, never in URL) ─────────────────────────
+const STORAGE_PER_PAGE_KEY = 'planner:perPage'
+const _stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_PER_PAGE_KEY) : null
+const localPerPage = ref<number>(
+    _stored && [10, 20, 50, 100].includes(Number(_stored)) ? Number(_stored) : (props.perPage ?? 20),
+)
+watch(localPerPage, (val) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_PER_PAGE_KEY, String(val))
+})
+
+// ── Preferences helper: inject view + per_page as headers, not URL params ─────
+function plannerVisit(url: string, options: Parameters<typeof router.visit>[1] = {}) {
+    return router.visit(url, {
+        ...options,
+        headers: {
+            'X-Planner-View': plannerStore.activeView,
+            'X-Planner-Per-Page': String(localPerPage.value),
+            ...(options.headers ?? {}),
+        },
+    })
+}
+
 // ── Filters ──────────────────────────────────────────────────────────────────
-const { applyFilters, clearFilters, hasActiveFilters } = usePlannerFilters(props.filters, props.activeMilestoneId)
+const { applyFilters, clearFilters, hasActiveFilters } = usePlannerFilters(props.filters, props.activeMilestoneId, () => ({
+    'X-Planner-View': plannerStore.activeView,
+    'X-Planner-Per-Page': String(localPerPage.value),
+}))
 
 const currentFilters = computed(() => ({
     milestone: props.activeMilestoneId,
     ...props.filters,
 }))
+
+// Reload events when switching to/from board so pagination is applied correctly
+watch(() => plannerStore.activeView, (newView, oldView) => {
+    if (newView === 'board' || oldView === 'board') {
+        plannerVisit(page.url.split('?')[0], {
+            data: { ...currentFilters.value },
+            preserveScroll: true,
+            only: ['events', 'perPage'],
+            replace: true,
+        })
+    }
+})
+
+// ── Client-side event accumulation (list view load more) ─────────────────────
+const allListEvents = ref<PlannerEvent[]>([])
+
+watch(
+    () => props.events,
+    (newEvents) => {
+        if (!newEvents) {
+            allListEvents.value = []
+            return
+        }
+        if (newEvents.current_page === 1) {
+            allListEvents.value = [...newEvents.data]
+        } else {
+            allListEvents.value = [...allListEvents.value, ...newEvents.data]
+        }
+    },
+    { immediate: true },
+)
+
+const listEvents = computed(() => {
+    if (!props.events) return undefined
+    return { ...props.events, data: allListEvents.value }
+})
 
 // ── Event drawer ─────────────────────────────────────────────────────────────
 const eventDrawerOpen = ref(false)
@@ -185,12 +299,41 @@ const loadingMore = ref(false)
 
 function loadMore() {
     if (!props.events?.next_page_url) return
+    const nextUrl = new URL(props.events.next_page_url, 'http://x')
+    const nextPage = nextUrl.searchParams.get('page') ?? '2'
     loadingMore.value = true
-    router.visit(props.events.next_page_url, {
+    plannerVisit(page.url.split('?')[0], {
+        data: { ...currentFilters.value, page: nextPage },
         preserveScroll: true,
         preserveState: true,
         only: ['events'],
+        replace: true,
         onFinish: () => { loadingMore.value = false },
+    })
+}
+
+// ── Per-page ──────────────────────────────────────────────────────────────────
+function changePerPage(n: string) {
+    localPerPage.value = Number(n)
+    plannerVisit(page.url.split('?')[0], {
+        data: { ...currentFilters.value },
+        preserveScroll: true,
+        only: ['events', 'perPage'],
+        replace: true,
+    })
+}
+
+// ── Table pagination ──────────────────────────────────────────────────────────
+const loadingTablePage = ref(false)
+
+function tableGoToPage(targetPage: number) {
+    loadingTablePage.value = true
+    plannerVisit(page.url.split('?')[0], {
+        data: { ...currentFilters.value, page: targetPage },
+        preserveScroll: true,
+        only: ['events'],
+        replace: true,
+        onFinish: () => { loadingTablePage.value = false },
     })
 }
 </script>
@@ -201,84 +344,140 @@ function loadMore() {
     <!-- Full-height flex column inside the app layout content area -->
     <div class="flex flex-col h-full overflow-hidden">
 
-        <!-- Milestone selector bar -->
-        <PlannerMilestoneSelector
+        <!-- ── Dashboard: grid/list of all milestones ──────────────────────── -->
+        <PlannerMilestoneDashboard
+            v-if="showingDashboard"
             :milestones="milestones"
-            :active-milestone-id="activeMilestoneId"
-            :current-filters="currentFilters"
-            @create-milestone="openCreateMilestone"
-            @open-explorer="milestoneExplorerOpen = true"
+            :active-milestone-id="activeMilestoneId"            v-model:group-by="dashboardGroupBy"            @create-milestone="openCreateMilestone"
         />
 
-        <!-- Active milestone header -->
-        <PlannerMilestoneHeader
-            v-if="activeMilestone"
-            :milestone="activeMilestone"
-            @edit="openEditMilestone"
-            @create-event="openCreateEvent"
-        />
-
-        <!-- Backlog header (no active milestone) -->
-        <div v-else class="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-            <h2 class="hidden sm:block text-sm font-semibold text-muted-foreground">Backlog — events without a milestone</h2>
-            <Button variant="outline" size="sm" class="h-7 gap-1.5" @click="openCreateEvent">
-                <span class="text-xs">Add event</span>
-            </Button>
-        </div>
-
-        <!-- Filters + view switcher -->
-        <PlannerFilters
-            :filters="filters"
-            :tags="tags ?? []"
-            :is-active="hasActiveFilters(filters)"
-            @change="applyFilters"
-        >
-            <template #trailing>
-                <PlannerViewSwitcher />
-            </template>
-        </PlannerFilters>
-
-        <!-- Viewport (swaps based on active view) -->
-        <PlannerEventList
-            v-if="plannerStore.activeView === 'list'"
-            :events="events"
-            :show-milestone="activeMilestoneId === null"
-            :loading="loadingMore"
-            @edit="openEditEvent"
-            @snooze="openSnooze"
-            @delete="openDelete"
-            @toggle-status="toggleStatus"
-            @duplicate="duplicateEvent"
-            @move-to-backlog="moveToBacklog"
-            @load-more="loadMore"
-        />
-
-        <!-- Table + Board views (stubs until implemented) -->
-        <PlannerTableView
-            v-else-if="plannerStore.activeView === 'table'"
-            :events="events?.data ?? []"
-            :show-milestone="activeMilestoneId === null"
-            @edit="openEditEvent"
-            @snooze="openSnooze"
-            @delete="openDelete"
-            @toggle-status="toggleStatus"
-            @duplicate="duplicateEvent"
-        />
-        <div
-            v-else
-            class="flex-1 overflow-hidden"
-        >
-            <PlannerBoardView
-                :events="events?.data ?? []"
+        <!-- ── Milestone detail view ───────────────────────────────────────── -->
+        <template v-else>
+            <!-- Single-row: milestone selector + status + stats + actions -->
+            <PlannerMilestoneSelector
+                :milestones="milestones"
                 :active-milestone-id="activeMilestoneId"
-                @edit="openEditEvent"
-                @snooze="openSnooze"
-                @delete="openDelete"
-                @toggle-status="toggleStatus"
-                @duplicate="duplicateEvent"
+                :current-filters="currentFilters"
+                v-model:group-by="dashboardGroupBy"
+                @open-explorer="milestoneExplorerOpen = true"
+                @edit="openEditMilestone"
+                @create-event="openCreateEvent"
             />
-        </div>
+
+            <!-- Saved view tabs -->
+            <PlannerViewTabs
+                v-if="(savedViews ?? []).length > 0"
+                :views="savedViews ?? []"
+                :active-view-id="activeViewId"
+                :milestone-id="activeMilestoneId"
+                @activate="activeViewId = $event"
+                @delete="activeViewId === $event ? (activeViewId = null) : null"
+            />
+
+            <!-- Filters + view switcher -->
+            <PlannerFilters
+                :filters="filters"
+                :tags="tags ?? []"
+                :is-active="hasActiveFilters(filters)"
+                @change="applyFilters"
+            >
+                <template #trailing>
+                    <!-- Column picker (list view only) -->
+                    <div v-if="plannerStore.activeView === 'list'" class="hidden sm:flex items-center border border-border rounded-md overflow-hidden">
+                        <Tooltip v-for="col in ([1, 2, 3, 4] as const).slice(0, maxListCols)" :key="col">
+                            <TooltipTrigger as-child>
+                                <button
+                                    type="button"
+                                    class="px-2 py-1 text-[11px] font-mono transition-colors"
+                                    :class="[
+                                        col > 1 ? 'border-l border-border' : '',
+                                        listColumns === col ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50',
+                                    ]"
+                                    @click="listColumns = col"
+                                >{{ col }}</button>
+                            </TooltipTrigger>
+                            <TooltipContent>{{ col }} column{{ col !== 1 ? 's' : '' }}</TooltipContent>
+                        </Tooltip>
+                    </div>
+                    <Select :model-value="String(localPerPage)" @update:model-value="changePerPage">
+                        <SelectTrigger class="h-7 w-24 text-xs border-0 bg-transparent shadow-none focus:ring-0 text-muted-foreground">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10" class="text-xs">10 / page</SelectItem>
+                            <SelectItem value="20" class="text-xs">20 / page</SelectItem>
+                            <SelectItem value="50" class="text-xs">50 / page</SelectItem>
+                            <SelectItem value="100" class="text-xs">100 / page</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <PlannerViewSwitcher />
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        @click="fieldManagerOpen = true"
+                    >
+                        Fields
+                    </Button>
+                </template>
+            </PlannerFilters>
+
+            <!-- Viewport (swaps based on active view) -->
+            <div ref="listViewport" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                <PlannerEventList
+                    v-if="plannerStore.activeView === 'list'"
+                    :events="listEvents"
+                    :show-milestone="activeMilestoneId === null"
+                    :loading="loadingMore"
+                    :columns="listColumns"
+                    @edit="openEditEvent"
+                    @snooze="openSnooze"
+                    @delete="openDelete"
+                    @toggle-status="toggleStatus"
+                    @duplicate="duplicateEvent"
+                    @move-to-backlog="moveToBacklog"
+                    @load-more="loadMore"
+                />
+
+                <!-- Table + Board views -->
+                <PlannerTableView
+                    v-else-if="plannerStore.activeView === 'table'"
+                    :events="events"
+                    :show-milestone="activeMilestoneId === null"
+                    :fields="fields ?? []"
+                    :loading="loadingTablePage"
+                    @edit="openEditEvent"
+                    @snooze="openSnooze"
+                    @delete="openDelete"
+                    @toggle-status="toggleStatus"
+                    @duplicate="duplicateEvent"
+                    @go-to-page="tableGoToPage"
+                />
+                <div
+                    v-else
+                    class="flex-1 overflow-hidden"
+                >
+                    <PlannerBoardView
+                        :events="events?.data ?? []"
+                        :active-milestone-id="activeMilestoneId"
+                        :fields="fields ?? []"
+                        @edit="openEditEvent"
+                        @snooze="openSnooze"
+                        @delete="openDelete"
+                        @toggle-status="toggleStatus"
+                        @duplicate="duplicateEvent"
+                    />
+                </div>
+            </div>
+        </template>
     </div>
+
+    <!-- Field manager drawer -->
+    <PlannerFieldManager
+        v-model:open="fieldManagerOpen"
+        :fields="fields ?? []"
+        :milestone-id="activeMilestoneId"
+    />
 
     <!-- Event create/edit drawer -->
     <PlannerEventDrawer

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { LayoutList, Table2, LayoutDashboard } from 'lucide-vue-next';
-import { usePlannerStore, type PlannerView } from '@/stores/planner';
+import { usePlannerStore, type PlannerViewMode } from '@/stores/planner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const store = usePlannerStore();
 
-const views: { id: PlannerView; label: string; icon: typeof LayoutList }[] = [
+const views: { id: PlannerViewMode; label: string; icon: typeof LayoutList }[] = [
     { id: 'list', label: 'List', icon: LayoutList },
     { id: 'table', label: 'Table', icon: Table2 },
     { id: 'board', label: 'Board', icon: LayoutDashboard },

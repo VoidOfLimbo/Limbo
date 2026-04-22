@@ -83,6 +83,18 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    * {
+        user-select: none;
+    }
+
+    input,
+    textarea,
+    [contenteditable],
+    .select-text,
+    .select-text * {
+        user-select: text;
+    }
 }
 
 @layer utilities {

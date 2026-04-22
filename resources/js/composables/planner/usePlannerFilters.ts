@@ -1,10 +1,22 @@
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import type { PlannerFilters } from '@/types/planner'
+
 /**
  * Manages planner filter state and applies them via partial Inertia reloads.
  * Filters are reflected in the URL so the view is bookmarkable.
+ * Preferences (view, per_page) are passed as headers, not URL params.
  */
-export function usePlannerFilters(currentFilters: PlannerFilters, activeMilestoneId: string | null) {
+export function usePlannerFilters(
+    currentFilters: PlannerFilters,
+    activeMilestoneId: string | null,
+    getHeaders?: () => Record<string, string>,
+) {
+    const page = usePage()
+
+    function pathname() {
+        return page.url.split('?')[0]
+    }
+
     function applyFilters(patch: Partial<PlannerFilters>) {
         const merged = { ...currentFilters, ...patch }
 
@@ -16,22 +28,24 @@ export function usePlannerFilters(currentFilters: PlannerFilters, activeMileston
             }
         }
 
-        router.visit(window.location.pathname, {
+        router.visit(pathname(), {
             data: query,
             preserveScroll: true,
             preserveState: true,
             only: ['events', 'filters'],
             replace: true,
+            headers: getHeaders?.() ?? {},
         })
     }
 
     function clearFilters() {
-        router.visit(window.location.pathname, {
+        router.visit(pathname(), {
             data: { milestone: activeMilestoneId },
             preserveScroll: true,
             preserveState: true,
             only: ['events', 'filters'],
             replace: true,
+            headers: getHeaders?.() ?? {},
         })
     }
 

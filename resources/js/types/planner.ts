@@ -19,7 +19,12 @@ export interface PlannerMilestone {
     visibility: 'private' | 'shared'
     color: string | null
     total_events_count: number
+    draft_events_count: number
+    upcoming_events_count: number
+    in_progress_events_count: number
     completed_events_count: number
+    cancelled_events_count: number
+    skipped_events_count: number
     breach_count: number
     progress: number
     is_breached: boolean
@@ -52,6 +57,7 @@ export interface PlannerEvent {
     tags: PlannerTag[]
     milestone: Pick<PlannerMilestone, 'id' | 'title' | 'deadline_type' | 'end_at'> | null
     children: PlannerEvent[]
+    field_values?: PlannerFieldValue[]
 }
 
 export interface PaginatedData<T> {
@@ -72,3 +78,79 @@ export interface PlannerFilters {
     date_to?: string
     show_snoozed?: string
 }
+
+export type GroupByKey = 'quarter' | 'month' | 'status' | 'priority' | 'deadline' | 'visibility' | 'duration'
+
+// ── Phase 3: Custom Fields + Views ────────────────────────────────────────────
+
+export type PlannerFieldType =
+    | 'text'
+    | 'number'
+    | 'date'
+    | 'single_select'
+    | 'multi_select'
+    | 'checkbox'
+    | 'url'
+    | 'person'
+
+export interface PlannerFieldOption {
+    id: string
+    name: string
+    color: string | null
+}
+
+export interface PlannerField {
+    id: string
+    user_id: string
+    milestone_id: string | null
+    name: string
+    type: PlannerFieldType
+    options: PlannerFieldOption[] | null
+    settings: Record<string, unknown> | null
+    position: number
+    is_system: boolean
+    created_at: string
+    updated_at: string
+}
+
+export interface PlannerFieldValue {
+    id: string
+    field_id: string
+    item_id: string
+    item_type: string
+    value: unknown
+}
+
+export type PlannerViewType = 'list' | 'table' | 'board' | 'roadmap'
+
+export interface PlannerViewTableLayout {
+    columns: Array<{
+        field_id: string
+        visible: boolean
+        width: number
+        pinned: 'left' | 'right' | null
+    }>
+}
+
+export interface PlannerViewBoardLayout {
+    group_field_id: string
+    card_fields: string[]
+    column_order: string[]
+}
+
+export interface PlannerView {
+    id: string
+    user_id: string
+    milestone_id: string | null
+    name: string
+    type: PlannerViewType
+    is_default: boolean
+    layout: PlannerViewTableLayout | PlannerViewBoardLayout | Record<string, unknown> | null
+    filters: Array<{ field_id: string; operator: string; value: unknown }> | null
+    sorts: Array<{ field_id: string; direction: 'asc' | 'desc' }> | null
+    group_by: { field_id: string; direction: 'asc' | 'desc'; collapse_empty: boolean } | null
+    position: number
+    created_at: string
+    updated_at: string
+}
+
