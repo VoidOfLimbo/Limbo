@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { destroy, snooze as snoozeEvent, update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
 import { usePlannerFilters } from '@/composables/planner/usePlannerFilters'
 import { usePlannerStore } from '@/stores/planner'
-import type { PaginatedData, PlannerEvent, PlannerField, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag, PlannerView, GroupByKey } from '@/types/planner'
+import type { PaginatedData, PlannerEvent, PlannerField, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag, PlannerView } from '@/types/planner'
 
 defineOptions({
     layout: {
@@ -78,9 +78,6 @@ watch(
     },
     { immediate: true },
 )
-
-// ── Shared group-by state (dashboard tabs ↔ selector popup) ──────────────────
-const dashboardGroupBy = ref<GroupByKey>('status')
 
 // ── View store ───────────────────────────────────────────────────────────────
 const plannerStore = usePlannerStore()
@@ -348,7 +345,7 @@ function tableGoToPage(targetPage: number) {
         <PlannerMilestoneDashboard
             v-if="showingDashboard"
             :milestones="milestones"
-            :active-milestone-id="activeMilestoneId"            v-model:group-by="dashboardGroupBy"            @create-milestone="openCreateMilestone"
+            :active-milestone-id="activeMilestoneId"            v-model:group-by="plannerStore.groupBy"            @create-milestone="openCreateMilestone"
         />
 
         <!-- ── Milestone detail view ───────────────────────────────────────── -->
@@ -358,7 +355,7 @@ function tableGoToPage(targetPage: number) {
                 :milestones="milestones"
                 :active-milestone-id="activeMilestoneId"
                 :current-filters="currentFilters"
-                v-model:group-by="dashboardGroupBy"
+                v-model:group-by="plannerStore.groupBy"
                 @open-explorer="milestoneExplorerOpen = true"
                 @edit="openEditMilestone"
                 @create-event="openCreateEvent"

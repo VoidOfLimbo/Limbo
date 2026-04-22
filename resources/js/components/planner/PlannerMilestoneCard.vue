@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { AlertTriangle, Lock, CheckCircle2 } from 'lucide-vue-next'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { PlannerMilestone } from '@/types/planner'
 
 const props = defineProps<{
@@ -45,7 +46,7 @@ function formatDate(d: string | null | undefined): string {
 <template>
     <button
         type="button"
-        class="group relative w-full text-left rounded-xl border bg-card transition-all duration-150
+        class="group relative w-full text-left rounded-xl border bg-card transition-all duration-150 cursor-pointer
                hover:shadow-md hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring overflow-hidden"
         :class="active ? 'border-primary/60 shadow-sm' : 'border-border'"
         :style="milestone.color
@@ -65,8 +66,18 @@ function formatDate(d: string | null | undefined): string {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-sm font-semibold leading-snug truncate max-w-45">{{ milestone.title }}</span>
-                        <AlertTriangle v-if="milestone.is_breached" class="size-3 text-destructive shrink-0" />
-                        <Lock v-if="milestone.deadline_type === 'hard'" class="size-3 text-muted-foreground/50 shrink-0" />
+                        <Tooltip v-if="milestone.is_breached">
+                            <TooltipTrigger as-child>
+                                <AlertTriangle class="size-3 text-destructive shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent>Events exceed milestone deadline</TooltipContent>
+                        </Tooltip>
+                        <Tooltip v-if="milestone.deadline_type === 'hard'">
+                            <TooltipTrigger as-child>
+                                <Lock class="size-3 text-muted-foreground/50 shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent>Hard deadline — cannot be extended</TooltipContent>
+                        </Tooltip>
                     </div>
                     <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                         <Badge :variant="statusVariant" class="capitalize text-[10px] h-4 px-1.5">{{ milestone.status }}</Badge>
@@ -101,15 +112,30 @@ function formatDate(d: string | null | undefined): string {
                 <span v-else>No dates set</span>
 
                 <div class="flex items-center gap-1.5">
-                    <span v-if="milestone.in_progress_events_count" class="flex items-center gap-0.5">
-                        <span class="size-1.5 rounded-full bg-violet-500 inline-block" />
-                        {{ milestone.in_progress_events_count }}
-                    </span>
-                    <span v-if="milestone.upcoming_events_count" class="flex items-center gap-0.5">
-                        <span class="size-1.5 rounded-full bg-blue-500 inline-block" />
-                        {{ milestone.upcoming_events_count }}
-                    </span>
-                    <CheckCircle2 v-if="milestone.progress >= 100" class="size-3 text-green-500" />
+                    <Tooltip v-if="milestone.in_progress_events_count">
+                        <TooltipTrigger as-child>
+                            <span class="flex items-center gap-0.5 cursor-default">
+                                <span class="size-1.5 rounded-full bg-violet-500 inline-block" />
+                                {{ milestone.in_progress_events_count }}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{{ milestone.in_progress_events_count }} in progress</TooltipContent>
+                    </Tooltip>
+                    <Tooltip v-if="milestone.upcoming_events_count">
+                        <TooltipTrigger as-child>
+                            <span class="flex items-center gap-0.5 cursor-default">
+                                <span class="size-1.5 rounded-full bg-blue-500 inline-block" />
+                                {{ milestone.upcoming_events_count }}
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent>{{ milestone.upcoming_events_count }} upcoming</TooltipContent>
+                    </Tooltip>
+                    <Tooltip v-if="milestone.progress >= 100">
+                        <TooltipTrigger as-child>
+                            <CheckCircle2 class="size-3 text-green-500" />
+                        </TooltipTrigger>
+                        <TooltipContent>All events completed</TooltipContent>
+                    </Tooltip>
                 </div>
             </div>
         </div>
