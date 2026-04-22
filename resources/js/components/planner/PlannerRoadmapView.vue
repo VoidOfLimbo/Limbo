@@ -35,7 +35,7 @@ const VALID_ZOOMS: ZoomLevel[] = ['week', 'month', 'quarter', 'year']
 const storedZoom = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_ZOOM_KEY) : null
 const zoom = ref<ZoomLevel>(VALID_ZOOMS.includes(storedZoom as ZoomLevel) ? (storedZoom as ZoomLevel) : 'month')
 const showDependencies = ref(false)
-const expandedMilestoneIds = ref<Set<string>>(new Set())
+const expandedMilestoneIds = ref<Set<string>>(new Set(props.milestones.map((m) => m.id)))
 
 function setZoom(z: ZoomLevel) {
     zoom.value = z
@@ -67,10 +67,15 @@ watch(
         const newMap = new Map(val.map((m) => [m.id, m]))
         const kept = localMilestones.value.filter((m) => newMap.has(m.id)).map((m) => newMap.get(m.id)!)
         const existingIds = new Set(localMilestones.value.map((m) => m.id))
+        const expanded = new Set(expandedMilestoneIds.value)
         for (const m of val) {
-            if (!existingIds.has(m.id)) kept.push(m)
+            if (!existingIds.has(m.id)) {
+                kept.push(m)
+                expanded.add(m.id) // auto-expand newly arrived milestones
+            }
         }
         localMilestones.value = kept
+        expandedMilestoneIds.value = expanded
     },
 )
 
