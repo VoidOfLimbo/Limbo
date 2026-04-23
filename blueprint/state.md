@@ -165,16 +165,35 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ### Planner — Phase 4 (Roadmap View)
 
-> **Status: Blueprint scoped — design only**
+> **Status: Complete ✅**
 > See [`blueprint/planner/phase-4.md`](./planner/phase-4.md), [`blueprint/planner-views/roadmap-view.md`](./planner-views/roadmap-view.md)
 
 | Area | Status |
 |---|---|
-| `PlannerRoadmapView` — timeline canvas | ❌ Future |
-| `useRoadmapLayout` composable (dateToX, zoom levels) | ❌ Future |
-| Bar drag + resize (useDraggable) | ❌ Future |
-| Dependency arrows (SVG overlay) | ❌ Future |
-| Iteration field type + `planner_iterations` table | ❌ Future |
+| Migration: `planner_iterations` | ✅ Done |
+| Model: `PlannerIteration` (HasUlids, date casts, `field()` BelongsTo) | ✅ Done |
+| `PlannerField hasMany PlannerIteration` relationship | ✅ Done |
+| `PlannerController` — roadmap as all-events (no pagination), deferred prop | ✅ Done |
+| Roadmap milestone scope: dashboard = all events, milestone page = scoped | ✅ Done |
+| `useRoadmapLayout` composable — dateToX, xToDate, widthFromDuration, pxPerDay | ✅ Done |
+| `ROADMAP_LAYOUT_KEY` injection key (provided by `PlannerRoadmapView`) | ✅ Done |
+| `ZoomLevel`: `week` \| `month` \| `quarter` \| `year` (day available but not in UI) | ✅ Done |
+| `PlannerRoadmapView` — local stable copies, optimistic updates, scroll sync, auto-scroll to today | ✅ Done |
+| `PlannerRoadmapToolbar` — zoom dropdown (Week/Month/Quarter/Year), Today button, Dependencies toggle | ✅ Done |
+| `PlannerRoadmapSidebar` — expandable milestone/event rows, status dot, lock/breach icons | ✅ Done |
+| `PlannerTimelineHeader` — sticky 52px, major/minor rows, today highlight, weekend dim | ✅ Done |
+| `PlannerTimelineGrid` — column/row dividers, weekend shading, today line + dot | ✅ Done |
+| `PlannerTimelineBar` — pointer-event drag/resize, status-based event colors, hard-deadline lock | ✅ Done |
+| `PlannerViewSwitcher` — Roadmap button (GanttChartSquare icon) | ✅ Done |
+| `Index.vue` — `handleRoadmapReschedule`, `ALL_EVENTS_VIEWS` watcher, roadmap template | ✅ Done |
+| Stable sort on prop updates (merge-by-ID watchers, no row jumping) | ✅ Done |
+| Milestone scope filter (`visibleMilestones` — only active milestone shown per context) | ✅ Done |
+| Stale events cleared on milestone navigation (`activeMilestoneId` watcher) | ✅ Done |
+| All milestones pre-expanded on open | ✅ Done |
+| Hard-deadline milestone `end_at` protected (right resize handle hidden, payload omits `end_at`) | ✅ Done |
+| Zoom preference persisted to `localStorage` (`planner:roadmapZoom`) | ✅ Done |
+| Dependency arrow SVG overlay | ❌ Deferred |
+| Iteration bands background highlighting | ❌ Deferred |
 
 ---
 

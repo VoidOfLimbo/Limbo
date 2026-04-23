@@ -1,7 +1,7 @@
 # Planner Views — Roadmap View
 
 **Depends on:** [`blueprint/planner-views/component-tree.md`](./component-tree.md), [`blueprint/planner-views/data-model.md`](./data-model.md)
-**Status:** Scoped for Phase 4 — design only, not yet built
+**Status:** Complete ✅ — implemented in Phase 4
 
 ---
 
@@ -9,45 +9,42 @@
 
 The Roadmap View renders milestones and events as **horizontal timeline bars** — similar to GitHub Projects' Roadmap view or a simplified Gantt chart. It gives users a bird's-eye view of how their life plan is distributed across time.
 
-Unlike a formal Gantt chart (which we may build separately), the Roadmap is focused on **visual clarity** over precise project management. It is the best view for answering: *"What's happening in the next 3 months?"*
+Unlike a formal Gantt chart, the Roadmap is focused on **visual clarity** over precise project management. Best for answering: *"What's happening in the next 3 months?"*
 
 ---
 
-## Key Features (Phase 4 target)
+## Key Features
 
-| Feature | Description |
-|---|---|
-| Milestone bars | Full-width bars spanning `start_at` → `end_at` of each milestone |
-| Event bars | Narrower bars per event, nested within milestone rows |
-| Zoom levels | Day / Week / Month / Quarter — adjusts horizontal scale |
-| Drag to reschedule | Drag bar left/right to change `start_at` / `end_at` |
-| Resize handles | Drag left/right edge to extend or shorten duration |
-| Dependency arrows | Lines connecting blocked events (from `event_dependencies`) |
-| Today indicator | Vertical red/accent line at today's date |
-| Iteration bands | Background highlighting for iteration periods (Phase 4+ custom field) |
-| Group by milestone | Default grouping — events nested under their milestone row |
-| Scroll sync | Left panel (item titles) + right panel (timeline) scroll in sync |
+| Feature | Status | Description |
+|---|---|---|
+| Milestone bars | ✅ | Full-width bars spanning `start_at` → `end_at`, coloured by milestone `color` or `--primary` |
+| Event bars | ✅ | Per-event bars, status-coloured by default (user `color` field overrides) |
+| Event status colors | ✅ | draft/skipped=gray, upcoming=blue, in_progress=violet, completed=green, cancelled=gray |
+| Zoom levels | ✅ | Week / Month / Quarter / Year — dropdown picker, persisted to `localStorage` |
+| Drag to reschedule | ✅ | Pointer events (move entire bar) → emits `reschedule` → parent handles server call |
+| Resize handles | ✅ | Left/right edge handles — drag to extend/shorten duration |
+| Hard-deadline lock | ✅ | Right handle hidden for hard-deadline milestones with a set `end_at` |
+| Today indicator | ✅ | Vertical accent line + dot at today's date |
+| Scroll sync | ✅ | Sidebar (item titles) + timeline (bars) scroll vertically in sync |
+| Auto-scroll to today | ✅ | On load, viewport horizontally centers on today |
+| Pre-expanded milestones | ✅ | All milestones open with events visible by default |
+| Milestone scope filter | ✅ | Inside a milestone: only that milestone + its events shown |
+| Optimistic updates | ✅ | Bars reposition instantly; server response merges data back in-place |
+| Dependency arrows | ❌ Deferred | SVG curved lines (Phase 5+) |
+| Iteration bands | ❌ Deferred | Background highlighting for `planner_iterations` date ranges |
 
 ---
 
 ## Rendering Strategy
 
-### SVG vs Canvas vs HTML
-
-| Approach | Pros | Cons |
-|---|---|---|
-| **SVG** | Easy to target events, CSS animations, screen reader support | Slow with >500 elements |
-| **Canvas** | Fast for massive datasets | No native events, must implement hit testing |
-| **HTML divs** | Simplest integration with Vue reactivity, CSS transitions | Slower at very high row counts |
-
-**Decision for Phase 4:** Start with **HTML divs + CSS transforms** for bars. Milestone rows are virtualized with `RecycleScroller`. If performance degrades at 500+ visible rows, migrate the bar layer to Canvas while keeping the row sidebar in HTML.
+**HTML divs + CSS transforms** for bars (implemented). Switching zoom re-calculates all positions via `dateToX()` — no data re-fetch. Row virtualization with `RecycleScroller` deferred until 500+ row performance testing.
 
 ---
 
 ## Layout Structure
 
 ```
-PlannerRoadmapView
+PlannerRoadmapView                   (root — provides ROADMAP_LAYOUT_KEY via Vue inject)
 ├── PlannerRoadmapToolbar
 │   ├── ZoomControl          day | week | month | quarter
 │   ├── TodayButton          → scroll to today
@@ -55,162 +52,133 @@ PlannerRoadmapView
 │
 └── PlannerRoadmapCanvas     [flex row, fills remaining height]
     │
-    ├── PlannerRoadmapSidebar  [fixed-width left panel, ~260px]
-    │   └── RecycleScroller    [virtualized]
-    │       └── PlannerRoadmapSidebarRow  × N
-    │           ├── Expand toggle (for milestones)
-    │           ├── Item title
-    │           └── Progress bar (milestones)
+    ├── PlannerRoadmapSidebar  [fixed-width left panel, 260px]
+    │   └── rows × N
+    │       ├── milestone row: expand toggle, status dot, title, lock/breach icons
+    │       └── event row: indented, status dot, title
     │
-    └── PlannerRoadmapTimeline [flex-1, overflow-x: scroll]
-        ├── PlannerTimelineHeader    [sticky top]
-        │   ├── Major labels  (months, quarters)
-        │   └── Minor labels  (weeks, days)
-        │
-        ├── PlannerTimelineGrid     [background, position: absolute]
-        │   ├── Today vertical line
-        │   ├── Weekend shading (when zoom = day/week)
-        │   └── Iteration bands (Phase 4 custom field)
-        │
-        └── PlannerTimelineRows     [scroll-synced with sidebar]
-            └── PlannerTimelineRow × N  [virtualized]
-                ├── PlannerTimelineBar    [position: absolute, draggable + resizable]
-                └── PlannerDependencyArrow (SVG overlay layer, Phase 4)
+    └── timelineScrollEl [flex-1, overflow-auto]
+        └── inner div (width = totalWidth)
+            ├── PlannerTimelineHeader    [sticky top, 52px]
+            │   ├── Major row (24px): months or years depending on zoom
+            │   └── Minor row (28px): days / weeks (W1–W52) / months / quarters
+            │
+            ├── PlannerTimelineGrid     [absolute, pointer-events-none]
+            │   ├── Today vertical line + dot
+            │   ├── Weekend shading (day/week zoom only)
+            │   └── Column/row dividers
+            │
+            └── PlannerTimelineBar × N  [absolute per row]
+                ├── bar body (draggable, coloured by status or explicit color)
+                ├── left resize handle
+                └── right resize handle (hidden for hard-deadline milestones)
 ```
 
 ---
 
 ## Coordinate System
 
-All bar positions are calculated from a `useRoadmapLayout` composable:
+All bar positions are provided by `useRoadmapLayout` composable and injected via `ROADMAP_LAYOUT_KEY`:
 
 ```typescript
-// resources/js/composables/useRoadmapLayout.ts
+// resources/js/composables/planner/useRoadmapLayout.ts
 
-export type ZoomLevel = 'day' | 'week' | 'month' | 'quarter'
+export type ZoomLevel = 'day' | 'week' | 'month' | 'quarter' | 'year'
 
-interface RoadmapLayout {
-    columnWidth: number          // px per unit (day/week/month/quarter)
-    totalWidth: number           // total timeline width in px
-    viewStart: Date              // leftmost visible date
-    viewEnd: Date                // rightmost visible date
-    dateToX: (date: Date) => number
-    xToDate: (x: number) => Date
-    widthFromDuration: (start: Date, end: Date) => number
+export const COLUMN_WIDTH: Record<ZoomLevel, number> = {
+    day: 40, week: 80, month: 120, quarter: 200, year: 320,
 }
 
-export function useRoadmapLayout(zoom: Ref<ZoomLevel>): RoadmapLayout {
-    const columnWidth = computed(() => ({
-        day:     40,   // 40px per day
-        week:    80,   // 80px per week (~11px/day)
-        month:   120,  // 120px per month (~4px/day)
-        quarter: 200,  // 200px per quarter (~2px/day)
-    }[zoom.value]))
+const DAYS_PER_UNIT: Record<ZoomLevel, number> = {
+    day: 1, week: 7, month: 30.4375, quarter: 91.3125, year: 365.25,
+}
 
-    // Window: always show ±3 units of padding beyond earliest/latest item
-    const viewStart = computed(() => subUnits(earliestDate.value, 3, zoom.value))
-    const viewEnd   = computed(() => addUnits(latestDate.value, 3, zoom.value))
-
-    const totalWidth = computed(() =>
-        differenceInUnits(viewEnd.value, viewStart.value, zoom.value) * columnWidth.value
-    )
-
-    function dateToX(date: Date): number {
-        return differenceInUnits(date, viewStart.value, zoom.value) * columnWidth.value
-    }
-
-    function xToDate(x: number): Date {
-        return addUnits(viewStart.value, x / columnWidth.value, zoom.value)
-    }
-
-    function widthFromDuration(start: Date, end: Date): number {
-        return Math.max(
-            differenceInUnits(end, start, zoom.value) * columnWidth.value,
-            columnWidth.value / 4,  // minimum bar width = 1/4 unit
-        )
-    }
-
-    return { columnWidth, totalWidth, viewStart, viewEnd, dateToX, xToDate, widthFromDuration }
+interface RoadmapLayoutContext {
+    columnWidth: ComputedRef<number>
+    totalWidth: ComputedRef<number>
+    viewStart: ComputedRef<Date>     // earliestItemDate - 3 units (±30 days fallback when no items)
+    viewEnd: ComputedRef<Date>       // latestItemDate + 3 units
+    zoom: Ref<ZoomLevel>
+    dateToX: (date: Date | string) => number
+    xToDate: (x: number) => Date
+    widthFromDuration: (start, end) => number   // min width = columnWidth / 4
+    pxPerDay: ComputedRef<number>
 }
 ```
+
+`allItems` fed to `useRoadmapLayout` is scoped to `visibleMilestones` + `localEvents`, so the viewport is always sized around what's actually displayed.
 
 ---
 
 ## Bar Drag + Resize
 
+Uses native pointer events (no useDraggable / dnd-kit):
+
 ```typescript
-// Bar drag — move entire bar (changes start_at + end_at by same delta)
-// Bar resize — drag left handle (changes start_at only) or right handle (changes end_at only)
-
-function onBarDragEnd(item: PlannerItem, deltaX: number) {
-    const layout = useRoadmapLayout(zoom)
-    const deltaDays = deltaX / layout.columnWidth.value    // fractional days
-
-    const newStart = addDays(item.startAt, Math.round(deltaDays))
-    const newEnd   = addDays(item.endAt,   Math.round(deltaDays))
-
-    mutate(item.id, { startAt: newStart, endAt: newEnd }, () =>
-        updateEvent({ id: item.id, input: { startAt: newStart, endAt: newEnd } })
-    )
+// PlannerTimelineBar.vue
+function startInteraction(e: PointerEvent, mode: 'move' | 'resize-left' | 'resize-right') {
+    e.preventDefault()
+    isDragging.value = true
+    dragStartX.value = e.clientX
+    document.addEventListener('pointermove', onPointerMove)
+    document.addEventListener('pointerup', onPointerUp, { once: true })
 }
+
+// onPointerUp: deltaDays = Math.round(dragOffsetX / pxPerDay)
+// emit reschedule(id, kind, newStart.toISOString().slice(0,10), newEnd.toISOString().slice(0,10))
 ```
 
-Use `@vueuse/core`'s `useDraggable` for the drag implementation — avoids a full dnd-kit setup for what is essentially constrained horizontal drag.
+Visual feedback during drag uses CSS `transform: translateX()` and width delta — no re-render needed.
 
----
+### Hard-Deadline Milestone Protection
 
-## Dependency Arrows (SVG Overlay)
-
-When `show_dependencies = true`, render an SVG layer on top of the timeline rows showing finish-to-start dependency arrows:
-
-```
-Event A end ──────────────→ Event B start
-              (curved arrow)
-```
-
-SVG `<path>` with a cubic bezier curve:
-```
-M (ax + aw) (ay + rowHeight/2)
-C (ax + aw + 40) (ay + rowHeight/2)
-  (bx - 40) (by + rowHeight/2)
-  bx (by + rowHeight/2)
+```typescript
+const isRightResizeLocked = computed(() =>
+    props.kind === 'milestone'
+    && (props.item as PlannerMilestone).deadline_type === 'hard'
+    && props.item.end_at !== null,
+)
 ```
 
-Where:
-- `ax`, `aw` = x position and width of the source event bar
-- `bx` = x position of the target event bar
-- `ay`, `by` = y position of each row (from row index × row height)
+Right handle uses `v-if="!isRightResizeLocked"`. Parent also omits `end_at` from the reschedule payload, and the optimistic update preserves the original `end_at`.
 
 ---
 
 ## Zoom Levels
 
-| Zoom | Column unit | Column width | Typical window |
-|---|---|---|---|
-| Day | 1 day | 40px | 30–60 days |
-| Week | 1 week | 80px | 12–24 weeks |
-| Month | 1 month | 120px | 12–18 months |
-| Quarter | 1 quarter | 200px | 8–12 quarters (2–3 years) |
+| Zoom | Column unit | Column width | `pxPerDay` | Typical window |
+|---|---|---|---|---|
+| Week | 1 week | 80px | ~11.4px | 6–12 months |
+| Month | 1 month | 120px | ~3.9px | 12–18 months |
+| Quarter | 1 quarter | 200px | ~2.2px | 2–3 years |
+| Year | 1 year | 320px | ~0.88px | 5–8 years |
 
-Switching zoom re-calculates all bar positions via `dateToX()` — no data re-fetch needed.
+Preference stored in `localStorage` under `planner:roadmapZoom`. Switching zoom re-calculates all positions via `dateToX()` — no data re-fetch.
+
+### Timeline Header Labels
+
+| Zoom | Major row | Minor row |
+|---|---|---|
+| Week | Month + year (e.g. "Apr 2026") | ISO week numbers (W1–W52) |
+| Month | Year (e.g. "2026") | Month abbreviations (Jan, Feb…) |
+| Quarter | Year (e.g. "2026") | Q1, Q2, Q3, Q4 |
+| Year | Year (e.g. "2026") | Q1, Q2, Q3, Q4 |
 
 ---
 
 ## Data Requirements
 
-Roadmap requires `start_at` and `end_at` to be set. Items without dates:
-- Are listed in a "No dates" section at the bottom of the sidebar
-- Do not render a bar in the timeline
-- Show an "Add dates" prompt on hover
+Roadmap requires `start_at` and `end_at` to be set on an item for a bar to render. Items without dates show a placeholder at today's position but no interactive bar.
 
 ---
 
-## Phase 4 Deferred Features
+## Deferred Features
 
-These are noted but explicitly not in Phase 4 scope:
-
-- **Milestone marker events** rendered as diamond shapes
-- **Critical path highlighting** (longest chain of blocking dependencies)
-- **Resource view** (grouped by person — Phase 6 when participants are wired)
-- **Export to image** (PNG/SVG snapshot of current viewport)
-- **Canvas renderer** (only if HTML performance is insufficient)
+| Feature | Notes |
+|---|---|
+| **Dependency arrows** | SVG cubic bezier overlay connecting finish→start relationships |
+| **Iteration bands** | Background highlighting for `planner_iterations` date ranges |
+| **Row virtualization** | `RecycleScroller` — only needed at 500+ rows |
+| **Milestone marker diamonds** | Point-in-time events rendered as diamond shapes |
+| **Critical path highlighting** | Longest chain of blocking dependencies |
+| **Canvas renderer** | Migration from HTML divs — only if HTML performance is insufficient |
