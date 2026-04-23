@@ -5,6 +5,7 @@ import type { PlannerEvent } from '@/types/planner'
 
 const props = defineProps<{
     event: PlannerEvent
+    showMilestone?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -72,7 +73,7 @@ function formatDate(dateStr: string | null) {
         </div>
 
         <!-- Milestone -->
-        <p v-if="event.milestone" class="text-xs text-muted-foreground truncate">
+        <p v-if="showMilestone && event.milestone" class="text-xs text-muted-foreground truncate">
             {{ event.milestone.title }}
         </p>
     </div>

@@ -11,6 +11,7 @@ const props = defineProps<{
     color: string
     events: PlannerEvent[]
     allEvents: PlannerEvent[]
+    showMilestone?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -55,7 +56,7 @@ function onStart() {
 </script>
 
 <template>
-    <div class="flex flex-col w-64 shrink-0 rounded-lg border border-border bg-muted/30">
+    <div class="flex flex-col w-80 shrink-0 rounded-lg border border-border bg-muted/30">
         <!-- Column header -->
         <div class="flex items-center justify-between px-3 py-2.5 border-b border-border">
             <div class="flex items-center gap-2">
@@ -81,6 +82,7 @@ function onStart() {
                 v-for="event in localEvents"
                 :key="event.id"
                 :event="event"
+                :show-milestone="showMilestone"
                 :data-id="event.id"
                 @click="emit('edit', event)"
                 @snooze="emit('snooze', event)"

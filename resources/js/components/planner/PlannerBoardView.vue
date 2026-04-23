@@ -203,6 +203,7 @@ const activeGroupLabel = computed(
                     :color="col.color"
                     :events="col.events"
                     :all-events="events"
+                    :show-milestone="activeMilestoneId === null"
                     @card-moved="onCardMoved"
                     @add-card="(title) => onAddCard(col.id, title)"
                     @edit="emit('edit', $event)"
