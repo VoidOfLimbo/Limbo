@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref, computed, onUnmounted } from 'vue'
+import { inject, ref, computed, watch, onUnmounted } from 'vue'
 import { ROADMAP_LAYOUT_KEY, addDays } from '@/composables/planner/useRoadmapLayout'
 import type { PlannerMilestone, PlannerEvent } from '@/types/planner'
 
@@ -27,14 +27,31 @@ const isRightResizeLocked = computed(() =>
     && props.item.end_at !== null,
 )
 
+// ── Pending position (locks bar at snapped location until props update arrives) ──
+
+const pendingStart = ref<string | null>(null)
+const pendingEnd = ref<string | null>(null)
+
+watch(
+    () => [props.item.start_at, props.item.end_at] as const,
+    () => {
+        pendingStart.value = null
+        pendingEnd.value = null
+    },
+)
+
+const effectiveStart = computed(() => pendingStart.value ?? props.item.start_at)
+const effectiveEnd = computed(() => pendingEnd.value ?? props.item.end_at)
+
 const barLeft = computed(() => {
-    if (!props.item.start_at) return 0
-    return layout.dateToX(props.item.start_at)
+    if (!effectiveStart.value) return 0
+    return layout.dateToX(effectiveStart.value)
 })
 
 const barWidth = computed(() => {
-    if (!props.item.start_at || !props.item.end_at) return layout.columnWidth.value
-    return layout.widthFromDuration(props.item.start_at, props.item.end_at)
+    if (!effectiveStart.value) return 20
+    if (!effectiveEnd.value) return 20
+    return layout.widthFromDuration(effectiveStart.value, effectiveEnd.value)
 })
 
 const barHeight = computed(() => props.rowHeight - PADDING_Y * 2)
@@ -91,10 +108,12 @@ function onPointerMove(e: PointerEvent) {
 function onPointerUp() {
     if (!isDragging.value) return
 
-    isDragging.value = false
     document.removeEventListener('pointermove', onPointerMove)
 
     const delta = dragOffsetX.value
+
+    // Reset drag visuals immediately
+    isDragging.value = false
     dragOffsetX.value = 0
 
     if (Math.abs(delta) < 2 || !props.item.start_at || !props.item.end_at) return
@@ -113,17 +132,23 @@ function onPointerUp() {
         newEnd = addDays(endDate, deltaDays)
     } else if (dragMode.value === 'resize-left') {
         newStart = addDays(startDate, deltaDays)
-        // Clamp: start must be at least 1 day before end
         if (newStart >= endDate) newStart = addDays(endDate, -1)
         newEnd = endDate
     } else {
         newStart = startDate
         newEnd = addDays(endDate, deltaDays)
-        // Clamp: end must be at least 1 day after start
         if (newEnd <= startDate) newEnd = addDays(startDate, 1)
     }
 
-    emit('reschedule', props.item.id, props.kind, newStart.toISOString().slice(0, 10), newEnd.toISOString().slice(0, 10))
+    const newStartStr = newStart.toISOString().slice(0, 10)
+    const newEndStr = newEnd.toISOString().slice(0, 10)
+
+    // Lock bar at snapped position so there's no visual snap-back before the
+    // parent's optimistic update arrives (watched above, clears pending on change)
+    pendingStart.value = newStartStr
+    pendingEnd.value = newEndStr
+
+    emit('reschedule', props.item.id, props.kind, newStartStr, newEndStr)
 }
 
 onUnmounted(() => {

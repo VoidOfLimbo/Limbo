@@ -88,7 +88,7 @@ const SORT_OPTIONS: { value: SortField; label: string }[] = [
     { value: 'end_at', label: 'End date' },
     { value: 'events', label: 'Event count' },
 ]
-const sortBy = ref<SortField>('title')
+const sortBy = ref<SortField>('end_at')
 const sortDir = ref<'asc' | 'desc'>('asc')
 
 function toggleSortDir() {
@@ -203,6 +203,17 @@ const selectedGroupOption = computed(() =>
 // ── Active tab ───────────────────────────────────────────────────────────────
 const activeGroup = ref<string | null>(null)
 
+// ── Pagination ───────────────────────────────────────────────────────────────
+const STORAGE_DASH_PER_PAGE_KEY = 'planner:dashPerPage'
+const _storedPerPage = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_DASH_PER_PAGE_KEY) : null
+const perPage = ref<number>(_storedPerPage && [10, 25, 50, 100].includes(Number(_storedPerPage)) ? Number(_storedPerPage) : 25)
+const currentPage = ref(1)
+
+watch(perPage, (val) => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_DASH_PER_PAGE_KEY, String(val))
+    currentPage.value = 1
+})
+
 // Reset / init active tab when groups change
 watch(
     grouped,
@@ -219,9 +230,20 @@ watch(
     { immediate: true },
 )
 
-const activeItems = computed(() =>
-    grouped.value.find(([label]) => label === activeGroup.value)?.[1] ?? [],
+// Reset page when tab changes
+watch(activeGroup, () => { currentPage.value = 1 })
+
+const activeItems = computed(() => {
+    const all = grouped.value.find(([label]) => label === activeGroup.value)?.[1] ?? []
+    const start = (currentPage.value - 1) * perPage.value
+    return all.slice(start, start + perPage.value)
+})
+
+const totalActiveItems = computed(() =>
+    grouped.value.find(([label]) => label === activeGroup.value)?.[1].length ?? 0,
 )
+
+const totalPages = computed(() => Math.max(1, Math.ceil(totalActiveItems.value / perPage.value)))
 </script>
 
 <template>
@@ -493,6 +515,38 @@ const activeItems = computed(() =>
                             {{ m.completed_events_count }}/{{ m.total_events_count }}
                         </span>
                     </button>
+                </div>
+            </div>
+
+            <!-- Pagination footer -->
+            <div
+                v-if="totalPages > 1 || totalActiveItems > 10"
+                class="shrink-0 border-t border-border px-4 py-2.5 flex items-center justify-between gap-3"
+            >
+                <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>{{ (currentPage - 1) * perPage + 1 }}–{{ Math.min(currentPage * perPage, totalActiveItems) }} of {{ totalActiveItems }}</span>
+                    <select
+                        :value="perPage"
+                        class="ml-2 h-6 rounded border border-border bg-background text-xs px-1 cursor-pointer"
+                        @change="perPage = Number(($event.target as HTMLSelectElement).value)"
+                    >
+                        <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">{{ n }} / page</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button
+                        type="button"
+                        class="h-6 px-2 text-xs rounded border border-border disabled:opacity-40 hover:bg-accent transition-colors"
+                        :disabled="currentPage <= 1"
+                        @click="currentPage--"
+                    >←</button>
+                    <span class="text-xs text-muted-foreground tabular-nums px-1">{{ currentPage }} / {{ totalPages }}</span>
+                    <button
+                        type="button"
+                        class="h-6 px-2 text-xs rounded border border-border disabled:opacity-40 hover:bg-accent transition-colors"
+                        :disabled="currentPage >= totalPages"
+                        @click="currentPage++"
+                    >→</button>
                 </div>
             </div>
         </template>

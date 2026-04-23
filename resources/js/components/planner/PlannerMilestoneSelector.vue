@@ -77,7 +77,7 @@ function getMonth(dateStr: string | null | undefined): string {
     if (!dateStr) return 'Unscheduled'
     const d = new Date(dateStr)
     if (isNaN(d.getTime())) return 'Unscheduled'
-    return d.toLocaleString('default', { month: 'short', year: 'numeric' })
+    return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
 }
 
 function getGroupKey(m: PlannerMilestone, by: GroupByKey): string {

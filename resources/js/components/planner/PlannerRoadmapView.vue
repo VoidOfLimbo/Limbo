@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, provide, ref, nextTick, watch, onMounted } from 'vue'
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
 import {
     useRoadmapLayout,
     ROADMAP_LAYOUT_KEY,
     type ZoomLevel,
 } from '@/composables/planner/useRoadmapLayout'
 import type { PaginatedData, PlannerEvent, PlannerMilestone } from '@/types/planner'
-import PlannerRoadmapToolbar from '@/components/planner/PlannerRoadmapToolbar.vue'
 import PlannerRoadmapSidebar, { type RoadmapRow } from '@/components/planner/PlannerRoadmapSidebar.vue'
 import PlannerTimelineHeader from '@/components/planner/PlannerTimelineHeader.vue'
 import PlannerTimelineGrid from '@/components/planner/PlannerTimelineGrid.vue'
@@ -17,12 +17,21 @@ const props = defineProps<{
     milestones: PlannerMilestone[]
     events: PaginatedData<PlannerEvent> | undefined
     activeMilestoneId: string | null
+    zoom: ZoomLevel
 }>()
 
 const emit = defineEmits<{
     createEvent: []
     reschedule: [id: string, kind: 'milestone' | 'event', newStart: string, newEnd: string]
+    loadMore: []
 }>()
+
+// ── Sidebar collapse ──────────────────────────────────────────────────────────
+const sidebarCollapsed = ref(false)
+// Load-more loading state (forwarded from parent)
+const loadingMore = ref(false)
+
+watch(() => props.events, () => { loadingMore.value = false })
 
 // ── Row height (px) ───────────────────────────────────────────────────────────
 
@@ -30,17 +39,7 @@ const ROW_HEIGHT = 44
 
 // ── View state ────────────────────────────────────────────────────────────────
 
-const STORAGE_ZOOM_KEY = 'planner:roadmapZoom'
-const VALID_ZOOMS: ZoomLevel[] = ['week', 'month', 'quarter', 'year']
-const storedZoom = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_ZOOM_KEY) : null
-const zoom = ref<ZoomLevel>(VALID_ZOOMS.includes(storedZoom as ZoomLevel) ? (storedZoom as ZoomLevel) : 'month')
-const showDependencies = ref(false)
 const expandedMilestoneIds = ref<Set<string>>(new Set(props.milestones.map((m) => m.id)))
-
-function setZoom(z: ZoomLevel) {
-    zoom.value = z
-    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_ZOOM_KEY, z)
-}
 
 function toggleMilestone(milestoneId: string) {
     const updated = new Set(expandedMilestoneIds.value)
@@ -122,7 +121,7 @@ const allItems = computed(() => [
 
 // ── Layout (provided to all child bars) ──────────────────────────────────────
 
-const layout = useRoadmapLayout(zoom, allItems)
+const layout = useRoadmapLayout(computed(() => props.zoom), allItems)
 provide(ROADMAP_LAYOUT_KEY, layout)
 
 // ── Flat row list ─────────────────────────────────────────────────────────────
@@ -210,6 +209,34 @@ onMounted(() => {
     }
 })
 
+// ── Drag-to-scroll (pan) ──────────────────────────────────────────────────────
+
+const isPanning = ref(false)
+const panStartX = ref(0)
+const panStartScrollLeft = ref(0)
+
+function onTimelinePointerDown(e: PointerEvent) {
+    // Only pan with left mouse button; bars call stopPropagation so this only
+    // fires on background clicks.
+    if (e.button !== 0 || !timelineScrollEl.value) return
+    isPanning.value = true
+    panStartX.value = e.clientX
+    panStartScrollLeft.value = timelineScrollEl.value.scrollLeft
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    e.preventDefault()
+}
+
+function onTimelinePointerMove(e: PointerEvent) {
+    if (!isPanning.value || !timelineScrollEl.value) return
+    const dx = e.clientX - panStartX.value
+    timelineScrollEl.value.scrollLeft = panStartScrollLeft.value - dx
+}
+
+function onTimelinePointerUp(e: PointerEvent) {
+    isPanning.value = false
+    ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+}
+
 // ── Reschedule (drag/resize) ──────────────────────────────────────────────────
 // Optimistically update local state so bars never flicker, then emit to parent.
 
@@ -231,19 +258,12 @@ function handleReschedule(id: string, kind: 'milestone' | 'event', newStart: str
 }
 
 const hasAnyDates = computed(() => allItems.value.length > 0 || localMilestones.value.length > 0)
+
+defineExpose({ scrollToToday })
 </script>
 
 <template>
     <div class="flex flex-col h-full overflow-hidden">
-        <!-- Toolbar -->
-        <PlannerRoadmapToolbar
-            :zoom="zoom"
-            :show-dependencies="showDependencies"
-            @update:zoom="setZoom"
-            @update:show-dependencies="showDependencies = $event"
-            @scroll-to-today="scrollToToday"
-        />
-
         <!-- Empty state -->
         <PlannerEmptyState
             v-if="!hasAnyDates"
@@ -256,14 +276,30 @@ const hasAnyDates = computed(() => allItems.value.length > 0 || localMilestones.
         <!-- Canvas: sidebar + timeline -->
         <div v-else class="flex flex-1 min-h-0 overflow-hidden">
             <!-- ── Left sidebar ─────────────────────────────────────────────── -->
-            <div class="flex flex-col w-[260px] shrink-0 border-r border-border bg-background overflow-hidden">
-                <!-- Header aligns with timeline header (52px = 6 major + 7 minor) -->
-                <div class="h-[52px] shrink-0 border-b border-border flex items-end px-3 pb-2">
-                    <span class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Item</span>
+            <div
+                class="flex flex-col shrink-0 border-r border-border bg-background overflow-hidden transition-all duration-200"
+                :class="sidebarCollapsed ? 'w-8' : 'w-65'"
+            >
+                <!-- Header: label + collapse toggle -->
+                <div class="h-13 shrink-0 border-b border-border flex items-end px-2 pb-2 gap-1.5">
+                    <span
+                        v-if="!sidebarCollapsed"
+                        class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex-1 truncate"
+                    >Item</span>
+                    <button
+                        type="button"
+                        class="flex items-center justify-center size-5 rounded hover:bg-muted transition-colors shrink-0 text-muted-foreground"
+                        :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+                        @click="sidebarCollapsed = !sidebarCollapsed"
+                    >
+                        <ChevronLeft v-if="!sidebarCollapsed" class="size-3.5" />
+                        <ChevronRight v-else class="size-3.5" />
+                    </button>
                 </div>
 
-                <!-- Rows (scroll synced with timeline) -->
+                <!-- Rows (scroll synced with timeline) — hidden when collapsed -->
                 <div
+                    v-if="!sidebarCollapsed"
                     ref="sidebarScrollEl"
                     class="flex-1 overflow-y-auto overflow-x-hidden"
                     @scroll="onSidebarScroll"
@@ -274,14 +310,36 @@ const hasAnyDates = computed(() => allItems.value.length > 0 || localMilestones.
                         :row-height="ROW_HEIGHT"
                         @toggle-milestone="toggleMilestone"
                     />
+
+                    <!-- Load more -->
+                    <div
+                        v-if="props.events?.next_page_url"
+                        class="flex items-center justify-center py-2 border-t border-border/20"
+                        :style="{ minHeight: `${ROW_HEIGHT}px` }"
+                    >
+                        <button
+                            type="button"
+                            class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            :disabled="loadingMore"
+                            @click="() => { loadingMore = true; emit('loadMore') }"
+                        >
+                            <Loader2 v-if="loadingMore" class="size-3 animate-spin" />
+                            {{ loadingMore ? 'Loading…' : 'Show more' }}
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- ── Right timeline ──────────────────────────────────────────── -->
             <div
                 ref="timelineScrollEl"
-                class="flex-1 overflow-auto"
+                class="flex-1 overflow-auto select-none"
+                :class="isPanning ? 'cursor-grabbing' : 'cursor-grab'"
                 @scroll="onTimelineScroll"
+                @pointerdown="onTimelinePointerDown"
+                @pointermove="onTimelinePointerMove"
+                @pointerup="onTimelinePointerUp"
+                @pointercancel="onTimelinePointerUp"
             >
                 <div
                     class="relative inline-block min-w-full"

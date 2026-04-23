@@ -103,7 +103,7 @@ export function useRoadmapLayout(zoom: Ref<ZoomLevel>, items: Ref<RoadmapItem[]>
     function widthFromDuration(start: Date | string, end: Date | string): number {
         const s = typeof start === 'string' ? new Date(start) : start
         const e = typeof end === 'string' ? new Date(end) : end
-        return Math.max(differenceInUnits(e, s, zoom.value) * columnWidth.value, columnWidth.value / 4)
+        return Math.max(differenceInUnits(e, s, zoom.value) * columnWidth.value, 20)
     }
 
     return { columnWidth, totalWidth, viewStart, viewEnd, zoom, dateToX, xToDate, widthFromDuration, pxPerDay }

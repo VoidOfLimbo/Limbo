@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Clock, MapPin, BellOff, ChevronRight, ChevronDown, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag, GripVertical } from 'lucide-vue-next'
+import { Clock, MapPin, BellOff, ChevronRight, ChevronDown, CheckCircle2, Circle, AlertTriangle, Pencil, Trash2, CheckSquare2, Flag } from 'lucide-vue-next'
 import PlannerChildRow from '@/components/planner/PlannerChildRow.vue'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,8 @@ import type { PlannerEvent } from '@/types/planner'
 const props = defineProps<{
     event: PlannerEvent
     showMilestone?: boolean
+    rowNumber?: number
+    isSelected?: boolean
 }>()
 
 const expanded = ref(true)
@@ -21,6 +23,7 @@ const emit = defineEmits<{
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
+    select: [event: PlannerEvent]
 }>()
 
 const isCompleted = computed(() => props.event.status === 'completed')
@@ -83,9 +86,12 @@ const isMilestoneBreached = computed(() => {
 })
 
 const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '))
+
+defineOptions({ inheritAttrs: false })
 </script>
 
 <template>
+    <div v-bind="$attrs">
     <PlannerContextMenu
         :event="event"
         @edit="emit('edit', $event)"
@@ -96,21 +102,29 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
         @duplicate="emit('duplicate', $event)"
     >
     <div
-        class="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors border-b border-border/50 cursor-default"
-        :class="{
-            'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped',
-            'border-l-2 border-l-destructive': isMilestoneBreached,
-        }"
+        class="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/40 transition-colors border-b border-border/50 cursor-pointer h-full"
+        :class="[
+            {
+                'opacity-50': isSnoozed || event.status === 'cancelled' || event.status === 'skipped',
+                'bg-primary/10': isSelected,
+            },
+            isMilestoneBreached ? 'border-l-2 border-l-destructive' : (isSelected ? 'border-l-2 border-l-primary' : ''),
+        ]"
+        @click="emit('select', event)"
+        @dblclick="emit('edit', event)"
     >
-        <!-- Drag handle -->
-        <GripVertical class="drag-handle size-3.5 shrink-0 text-muted-foreground/30 group-hover:text-muted-foreground/60 cursor-grab active:cursor-grabbing transition-colors" />
+        <!-- Row number -->
+        <span class="w-5 shrink-0 text-center text-xs tabular-nums text-muted-foreground/60 group-hover:text-foreground/70 select-none leading-none font-medium">
+            {{ rowNumber ?? '' }}
+        </span>
 
         <!-- Status toggle -->
         <Tooltip>
             <TooltipTrigger as-child>
                 <button
-                    class="shrink-0 text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none"
-                    @click="emit('toggleStatus', event)"
+                    class="shrink-0 text-muted-foreground hover:text-primary transition-colors focus-visible:outline-none cursor-pointer"
+                    @click.stop="emit('toggleStatus', event)"
+                    @dblclick.stop
                 >
                     <CheckCircle2 v-if="isCompleted" class="size-4 text-green-500" />
                     <Circle v-else class="size-4" />
@@ -238,7 +252,8 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                         variant="ghost"
                         size="icon-sm"
                         class="size-6 text-muted-foreground hover:text-foreground"
-                        @click="emit('edit', event)"
+                        @click.stop="emit('edit', event)"
+                        @dblclick.stop
                     >
                         <Pencil class="size-3.5" />
                     </Button>
@@ -251,7 +266,8 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                         variant="ghost"
                         size="icon-sm"
                         class="size-6 text-muted-foreground hover:text-amber-500"
-                        @click="emit('snooze', event)"
+                        @click.stop="emit('snooze', event)"
+                        @dblclick.stop
                     >
                         <BellOff class="size-3.5" />
                     </Button>
@@ -264,7 +280,8 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
                         variant="ghost"
                         size="icon-sm"
                         class="size-6 text-muted-foreground hover:text-destructive"
-                        @click="emit('delete', event)"
+                        @click.stop="emit('delete', event)"
+                        @dblclick.stop
                     >
                         <Trash2 class="size-3.5" />
                     </Button>
@@ -290,5 +307,6 @@ const tagsTooltip = computed(() => props.event.tags.map((t) => t.name).join(', '
             @toggle-status="emit('toggleStatus', $event)"
             @duplicate="emit('duplicate', $event)"
         />
+    </div>
     </div>
 </template>

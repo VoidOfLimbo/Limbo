@@ -179,7 +179,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 | `ROADMAP_LAYOUT_KEY` injection key (provided by `PlannerRoadmapView`) | ✅ Done |
 | `ZoomLevel`: `week` \| `month` \| `quarter` \| `year` (day available but not in UI) | ✅ Done |
 | `PlannerRoadmapView` — local stable copies, optimistic updates, scroll sync, auto-scroll to today | ✅ Done |
-| `PlannerRoadmapToolbar` — zoom dropdown (Week/Month/Quarter/Year), Today button, Dependencies toggle | ✅ Done |
+| `PlannerRoadmapToolbar` — zoom dropdown, Today button, Dependencies toggle | ✅ Done (controls lifted to `Index.vue` trailing slot; component file kept but unused inline) |
 | `PlannerRoadmapSidebar` — expandable milestone/event rows, status dot, lock/breach icons | ✅ Done |
 | `PlannerTimelineHeader` — sticky 52px, major/minor rows, today highlight, weekend dim | ✅ Done |
 | `PlannerTimelineGrid` — column/row dividers, weekend shading, today line + dot | ✅ Done |
@@ -197,7 +197,59 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 
 ---
 
-## Tech Stack
+### Planner — Phase 4.5 (UX Polish — unplanned, added this session)
+
+> **Status: Complete ✅** — not in original blueprint; iterative improvements applied across all views
+
+#### Layout & Shell
+| Area | Status |
+|---|---|
+| `AppShell.vue` — `SidebarProvider` constrained to viewport with `h-svh overflow-hidden` | ✅ Done |
+| `layouts/app/Layout.vue` — content slot wrapped in `flex-1 overflow-y-auto min-h-0` (header sticky, page scrolls) | ✅ Done |
+
+#### Filters
+| Area | Status |
+|---|---|
+| `PlannerFilters.vue` — converted from collapsible inline panel to `Popover` trigger; active count badge on button; no inline chips | ✅ Done |
+| `PlannerMilestoneSelector.vue` — fixed September sort order (`toLocaleString` → hardcoded `MONTH_NAMES` array) | ✅ Done |
+
+#### Roadmap
+| Area | Status |
+|---|---|
+| `PlannerTimelineBar.vue` — drag snap-back eliminated via `pendingStart`/`pendingEnd` refs holding optimistic position until props update | ✅ Done |
+| `PlannerTimelineBar.vue` — minimum bar width fixed to 20px (was zoom-relative `columnWidth / 4`) | ✅ Done |
+| `PlannerTimelineBar.vue` — no-`end_at` fallback bar width fixed to 20px (was also zoom-relative) | ✅ Done |
+| `useRoadmapLayout` — minimum `widthFromDuration` hardcoded to 20px | ✅ Done |
+| `PlannerRoadmapView.vue` — pointer-capture drag-to-scroll on timeline canvas (`cursor-grab` / `cursor-grabbing`) | ✅ Done |
+| `PlannerRoadmapView.vue` — collapsible sidebar (`sidebarCollapsed` toggle, `w-65` ↔ `w-8`) | ✅ Done |
+| `PlannerRoadmapView.vue` — "Show more" button at bottom of sidebar when `events.next_page_url` exists | ✅ Done |
+| `PlannerRoadmapView.vue` — `zoom` received as prop from `Index.vue` (was internal state) | ✅ Done |
+| `Index.vue` — roadmap toolbar (zoom picker Popover, Today button, Dependencies toggle) lifted into `#trailing` filter bar slot, only shown when `activeView === 'roadmap'` | ✅ Done |
+| `Index.vue` — `roadmapZoom` ref persisted to `localStorage` (`planner:roadmapZoom`) | ✅ Done |
+| `Index.vue` — `roadmapViewRef` exposes `scrollToToday()` delegation | ✅ Done |
+
+#### List View
+| Area | Status |
+|---|---|
+| `PlannerEventList.vue` — VueDraggable drag-to-reorder removed | ✅ Done |
+| `PlannerEventList.vue` — multi-column layout switched from column-first to row-first (`rowChunks`) — equal height per row via CSS grid | ✅ Done |
+| `PlannerEventList.vue` — `selectedId` ref + keyboard navigation (↑/↓ move selection, Enter opens, Escape clears) | ✅ Done |
+| `PlannerEventList.vue` — container has `tabindex="0"` for keyboard focus | ✅ Done |
+| `PlannerEventRow.vue` — drag handle (`GripVertical`) replaced with row number (`rowNumber` prop) | ✅ Done |
+| `PlannerEventRow.vue` — row numbers visible: `text-xs font-medium`, muted at rest → `text-foreground/70` on hover | ✅ Done |
+| `PlannerEventRow.vue` — single click selects (`isSelected` prop → `bg-primary/10` + `border-l-primary`), double click opens edit | ✅ Done |
+| `PlannerEventRow.vue` — `select` emit + `isSelected` prop wired through `PlannerEventList` | ✅ Done |
+| `PlannerEventRow.vue` — status toggle has `cursor-pointer` + `@click.stop` / `@dblclick.stop` | ✅ Done |
+| `PlannerEventRow.vue` — all action buttons have `@click.stop` + `@dblclick.stop` | ✅ Done |
+
+#### Pagination / Preferences
+| Area | Status |
+|---|---|
+| `Index.vue` — per-page changed from `<select>` to `<input type="number">` (min 5, max 100) | ✅ Done |
+| `Index.vue` — per-page input uses 600ms debounce (changes stack; single request fires on stop typing) | ✅ Done |
+| `Index.vue` — column count selector (1–4) persisted to `localStorage` (`planner:listColumns`) | ✅ Done |
+
+---
 
 | Layer | Package | Version |
 |---|---|---|
@@ -552,9 +604,9 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `PlannerMilestoneSelector.vue` | ✅ Done | Compact bar with Popover; groupBy (quarter/status/priority), collapsible groups, arc progress ring |
 | `PlannerMilestoneHeader.vue` | ✅ Done | Milestone band — title, progress bar, deadline badge, breach warning |
 | `PlannerMilestoneExplorer.vue` | ✅ Done | Bottom vaul-vue drawer — full milestone browser with search and select |
-| `PlannerFilters.vue` | ✅ Done | Collapsible filter panel — color-coded pills, active chip bar, mobile-responsive (separators hidden on mobile) |
-| `PlannerEventList.vue` | ✅ Done | Paginated event list with VueDraggable drag-to-reorder; deferred-prop skeleton state |
-| `PlannerEventRow.vue` | ✅ Done | Single event row — drag handle (GripVertical), badges, dates, snooze indicator, context menu |
+| `PlannerFilters.vue` | ✅ Done | Popover trigger — active filter count badge on button; color-coded pills inside popover; "Clear all" link when active; no inline chips |
+| `PlannerEventList.vue` | ✅ Done | Paginated event list; row-first multi-column layout (1–4 cols) for equal-height rows; `selectedId` state + ↑/↓/Enter/Escape keyboard navigation; `tabindex="0"` container; VueDraggable removed |
+| `PlannerEventRow.vue` | ✅ Done | Single event row — row number (instead of drag handle), badges, dates, snooze indicator, context menu; single-click selects (`isSelected` highlight + primary left border), double-click opens edit; `cursor-pointer` on status toggle; action button clicks stop propagation |
 | `PlannerChildRow.vue` | ✅ Done | Collapsible nested event row with chevron toggle |
 | `PlannerEventDrawer.vue` | ✅ Done | Bottom vaul-vue drawer for create/edit event; responsive grid layout (4 rows), snap points |
 | `PlannerMilestoneDrawer.vue` | ✅ Done | Bottom vaul-vue drawer for create/edit milestone; responsive grid layout (4 rows), snap points |
@@ -584,6 +636,7 @@ Fortify registers its own auth routes (login, register, logout, password, 2FA, e
 | `useTextScramble` | Drives the character-scramble animation used by `ScrambleText` |
 | `useTwoFactorAuth` | Manages 2FA setup state (QR fetch, confirmation, recovery codes) |
 | `planner/usePlannerFilters` | Manages planner filter state + URL sync |
+| `planner/useRoadmapLayout` | Computes bar positions for Roadmap view — `dateToX`, `xToDate`, `widthFromDuration`, `pxPerDay`; provided via `ROADMAP_LAYOUT_KEY` injection key |
 
 ---
 
@@ -679,12 +732,56 @@ These apply to every feature and file in this codebase. Non-negotiable.
 
 ## What Doesn't Exist Yet
 
+> **Note:** Planner phases 1–4.5 are complete. The list below reflects remaining planned work.
+
+### Non-Planner
 - Any real dashboard content
 - Server / community feature (Page Builder)
 - Expense Planner module
-- Planner module
 - Subscription / payment flow
 - Loyalist perks implementation
 - Invite system (page exists, logic TBD)
 - Public user profiles
 - OAuth callback controllers (Socialite routes not yet wired)
+
+---
+
+## Planner — What's Left
+
+### Deferred from Phase 4
+| Item | Notes |
+|---|---|
+| Dependency arrow SVG overlay | Curved SVG lines connecting dependent events on the roadmap |
+| Iteration bands | Background highlighting for `planner_iterations` date ranges on roadmap |
+
+### Phase 5 (planned — Event Dependencies UI)
+| Item | Notes |
+|---|---|
+| `EventDependency` CRUD UI | Table exists, model exists; UI for creating/managing blocking/informational links |
+| Dependency validation | Prevent circular dependencies server-side |
+| Dependency arrows on roadmap | SVG overlay — was deferred from Phase 4 |
+
+### Phase 6 (planned — Recurrence + Occurrences)
+| Item | Notes |
+|---|---|
+| Recurrence rule UI | `recurrence_rule` JSON field stored; no UI for editing RRULE |
+| Occurrence generation | `event_occurrences` table exists; needs background job to expand recurring events |
+| Occurrence overrides | Per-occurrence status/title overrides via `overrides` JSON |
+
+### Phase 7 (planned — Participants + Reminders)
+| Item | Notes |
+|---|---|
+| Event reminders UI | `event_reminders` table + model exist; no delivery or UI |
+| Event participants UI | `event_participants` table + model exist; no invitation flow |
+| Reminder delivery | Job/notification to send reminders at `sent_at` time |
+
+### General Planner Improvements (unscheduled)
+| Item | Notes |
+|---|---|
+| Table view inline field editing (beyond title) | Currently only title is editable inline in `PlannerFieldCell` |
+| Board view: drag-to-reorder within column | SortableJS supports it; not yet wired |
+| Full-text search across all events | `/events?search=` endpoint exists; no global search UI |
+| Event details page (`/events/{event}`) | `EventController@show` route exists; no page component |
+| ICS export UI | Routes exist (`planner.export.ics.*`); no export button in UI |
+| `PlannerRoadmapToolbar.vue` cleanup | File kept but controls now live in `Index.vue`; can be deleted or repurposed |
+| Accessibility pass | Row keyboard nav added; full ARIA audit deferred |

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from 'lucide-vue-next'
-import { ref, watch, nextTick, computed } from 'vue'
-import { VueDraggable } from 'vue-draggable-plus'
-import { reorder as reorderEvents } from '@/actions/App/Http/Controllers/Planner/EventController'
+import { computed, ref, watch } from 'vue'
 import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
 import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
 import { Button } from '@/components/ui/button'
@@ -16,19 +14,22 @@ const props = defineProps<{
     columns?: 1 | 2 | 3 | 4
 }>()
 
-// Split events into N columns for multi-column layout
-const columnChunks = computed(() => {
+// Build rows: each entry is [event, globalIndex] across all columns.
+// Rendering as rows (not columns) ensures equal height per row.
+const rowChunks = computed(() => {
     const cols = props.columns ?? 1
+    const data = props.events?.data ?? []
+    if (cols <= 1 || !data.length) return null
 
-    if (cols <= 1 || !localEvents.value.length) {
-        return [localEvents.value]
+    const rows: { event: PlannerEvent; globalIndex: number }[][] = []
+    for (let i = 0; i < data.length; i += cols) {
+        const row: { event: PlannerEvent; globalIndex: number }[] = []
+        for (let c = 0; c < cols; c++) {
+            if (i + c < data.length) row.push({ event: data[i + c], globalIndex: i + c })
+        }
+        rows.push(row)
     }
-
-    const chunks: PlannerEvent[][] = Array.from({ length: cols }, () => [])
-
-    localEvents.value.forEach((e, i) => chunks[i % cols].push(e))
-
-    return chunks
+    return rows
 })
 
 const emit = defineEmits<{
@@ -41,46 +42,36 @@ const emit = defineEmits<{
     loadMore: []
 }>()
 
-// ── Drag-to-reorder ──────────────────────────────────────────────────────────
-const localEvents = ref<PlannerEvent[]>([])
-const isDragging = ref(false)
+// ── Selection & keyboard navigation ──────────────────────────────────────
+const selectedId = ref<number | null>(null)
 
-watch(
-    () => props.events?.data,
-    (data) => {
-        if (isDragging.value) {
-            return
-        }
+const allEvents = computed(() => props.events?.data ?? [])
+const selectedIndex = computed(() => allEvents.value.findIndex((e) => e.id === selectedId.value))
 
-        nextTick(() => {
-            localEvents.value = data ? [...data] : []
-        })
-    },
-    { immediate: true },
-)
+// Clear selection when event list changes (e.g. filter/page change)
+watch(() => props.events?.data, () => { selectedId.value = null })
 
-function onStart() {
-    isDragging.value = true
-}
-
-function onEnd() {
-    isDragging.value = false
-    const ids = localEvents.value.map((e) => e.id)
-    const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
-    fetch(reorderEvents().url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-        },
-        body: JSON.stringify({ ids }),
-    })
+function onKeydown(e: KeyboardEvent) {
+    if (!['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) return
+    const total = allEvents.value.length
+    if (!total) return
+    e.preventDefault()
+    if (e.key === 'ArrowDown') {
+        const next = selectedIndex.value < total - 1 ? selectedIndex.value + 1 : 0
+        selectedId.value = allEvents.value[next].id
+    } else if (e.key === 'ArrowUp') {
+        const prev = selectedIndex.value > 0 ? selectedIndex.value - 1 : total - 1
+        selectedId.value = allEvents.value[prev].id
+    } else if (e.key === 'Enter' && selectedIndex.value >= 0) {
+        emit('edit', allEvents.value[selectedIndex.value])
+    } else if (e.key === 'Escape') {
+        selectedId.value = null
+    }
 }
 </script>
 
 <template>
-    <div class="flex flex-col flex-1 overflow-y-auto">
+    <div class="flex flex-col flex-1 overflow-y-auto focus:outline-none" tabindex="0" @keydown="onKeydown">
         <!-- Skeleton state (deferred props loading) -->
         <template v-if="events === undefined">
             <div v-for="i in 6" :key="i" class="flex items-start gap-3 px-4 py-3 border-b border-border/50">
@@ -94,22 +85,16 @@ function onEnd() {
 
         <!-- Event rows -->
         <template v-else-if="events.data.length">
-            <!-- Single-column: draggable -->
-            <VueDraggable
-                v-if="(columns ?? 1) === 1"
-                v-model="localEvents"
-                handle=".drag-handle"
-                ghost-class="opacity-30"
-                :animation="150"
-                class="flex flex-col"
-                @start="onStart"
-                @end="onEnd"
-            >
+            <!-- Single-column -->
+            <div v-if="!rowChunks" class="flex flex-col">
                 <PlannerEventRow
-                    v-for="event in localEvents"
+                    v-for="(event, i) in events.data"
                     :key="event.id"
                     :event="event"
+                    :row-number="i + 1"
                     :show-milestone="showMilestone"
+                    :is-selected="selectedId === event.id"
+                    @select="selectedId = $event.id"
                     @edit="emit('edit', $event)"
                     @snooze="emit('snooze', $event)"
                     @move-to-backlog="emit('moveToBacklog', $event)"
@@ -117,28 +102,29 @@ function onEnd() {
                     @toggle-status="emit('toggleStatus', $event)"
                     @duplicate="emit('duplicate', $event)"
                 />
-            </VueDraggable>
+            </div>
 
-            <!-- Multi-column grid -->
-            <div
-                v-else
-                class="grid flex-1 items-start gap-x-0"
-                :class="{
-                    'grid-cols-2': columns === 2,
-                    'grid-cols-3': columns === 3,
-                    'grid-cols-4': columns === 4,
-                }"
-            >
+            <!-- Multi-column: rows rendered horizontally so height equalises per row -->
+            <div v-else class="flex flex-col">
                 <div
-                    v-for="(chunk, ci) in columnChunks"
-                    :key="ci"
-                    class="flex flex-col border-r border-border/50 last:border-r-0"
+                    v-for="(row, ri) in rowChunks"
+                    :key="ri"
+                    class="grid"
+                    :class="{
+                        'grid-cols-2': (columns ?? 1) === 2,
+                        'grid-cols-3': (columns ?? 1) === 3,
+                        'grid-cols-4': (columns ?? 1) === 4,
+                    }"
                 >
                     <PlannerEventRow
-                        v-for="event in chunk"
-                        :key="event.id"
-                        :event="event"
+                        v-for="cell in row"
+                        :key="cell.event.id"
+                        :event="cell.event"
+                        :row-number="cell.globalIndex + 1"
                         :show-milestone="showMilestone"
+                        :is-selected="selectedId === cell.event.id"
+                        class="border-r border-border/50 last:border-r-0"
+                        @select="selectedId = $event.id"
                         @edit="emit('edit', $event)"
                         @snooze="emit('snooze', $event)"
                         @move-to-backlog="emit('moveToBacklog', $event)"

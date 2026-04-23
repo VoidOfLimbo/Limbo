@@ -19,15 +19,17 @@ import PlannerTableView from '@/components/planner/PlannerTableView.vue'
 import PlannerBoardView from '@/components/planner/PlannerBoardView.vue'
 import PlannerRoadmapView from '@/components/planner/PlannerRoadmapView.vue'
 import PlannerMilestoneDashboard from '@/components/planner/PlannerMilestoneDashboard.vue'
+import { CalendarDays, Check, ChevronDown, Search, Share2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { destroy, snooze as snoozeEvent, update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
 import { update as updateMilestone } from '@/actions/App/Http/Controllers/Planner/MilestoneController'
 import { usePlannerFilters } from '@/composables/planner/usePlannerFilters'
 import { usePlannerStore } from '@/stores/planner'
 import type { PaginatedData, PlannerEvent, PlannerField, PlannerFilters as PlannerFilterValues, PlannerMilestone, PlannerTag, PlannerView } from '@/types/planner'
+import type { ZoomLevel } from '@/composables/planner/useRoadmapLayout'
 
 defineOptions({
     layout: {
@@ -84,14 +86,42 @@ watch(
 // ── View store ───────────────────────────────────────────────────────────────
 const plannerStore = usePlannerStore()
 
+// ── Roadmap controls ─────────────────────────────────────────────────────────
+const ROADMAP_STORAGE_ZOOM_KEY = 'planner:roadmapZoom'
+const VALID_ZOOMS: ZoomLevel[] = ['week', 'month', 'quarter', 'year']
+const _storedZoom = typeof localStorage !== 'undefined' ? localStorage.getItem(ROADMAP_STORAGE_ZOOM_KEY) : null
+const roadmapZoom = ref<ZoomLevel>(VALID_ZOOMS.includes(_storedZoom as ZoomLevel) ? (_storedZoom as ZoomLevel) : 'month')
+const showDependencies = ref(false)
+const roadmapViewRef = ref<InstanceType<typeof PlannerRoadmapView> | null>(null)
+const zoomPickerOpen = ref(false)
+
+const ZOOM_LEVELS: { value: ZoomLevel; label: string }[] = [
+    { value: 'week', label: 'Week' },
+    { value: 'month', label: 'Month' },
+    { value: 'quarter', label: 'Quarter' },
+    { value: 'year', label: 'Year' },
+]
+
+function setRoadmapZoom(z: ZoomLevel) {
+    roadmapZoom.value = z
+    if (typeof localStorage !== 'undefined') localStorage.setItem(ROADMAP_STORAGE_ZOOM_KEY, z)
+    zoomPickerOpen.value = false
+}
+
 // ── List columns ─────────────────────────────────────────────────────────────
 const listViewport = ref<HTMLElement | null>(null)
 const { width: listViewportWidth } = useElementSize(listViewport)
 const maxListCols = computed(() => Math.max(1, Math.min(4, Math.floor(listViewportWidth.value / 240))) as 1 | 2 | 3 | 4)
-const listColumns = ref<1 | 2 | 3 | 4>(1)
+const STORAGE_COLUMNS_KEY = 'planner:listColumns'
+const _storedCols = typeof localStorage !== 'undefined' ? Number(localStorage.getItem(STORAGE_COLUMNS_KEY)) : 1
+const listColumns = ref<1 | 2 | 3 | 4>(([1, 2, 3, 4].includes(_storedCols) ? _storedCols : 1) as 1 | 2 | 3 | 4)
 watch(maxListCols, (max) => {
-    if (listColumns.value > max) listColumns.value = max
+    if (listViewportWidth.value > 0 && listColumns.value > max) listColumns.value = max as 1 | 2 | 3 | 4
 }, { immediate: true })
+function setListColumns(col: 1 | 2 | 3 | 4) {
+    listColumns.value = col
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_COLUMNS_KEY, String(col))
+}
 const activeViewId = ref<string | null>(null)
 const fieldManagerOpen = ref(false)
 const page = usePage()
@@ -100,9 +130,11 @@ const page = usePage()
 const STORAGE_PER_PAGE_KEY = 'planner:perPage'
 const _stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_PER_PAGE_KEY) : null
 const localPerPage = ref<number>(
-    _stored && [10, 20, 50, 100].includes(Number(_stored)) ? Number(_stored) : (props.perPage ?? 20),
+    _stored && Number(_stored) >= 5 && Number(_stored) <= 100 ? Number(_stored) : (props.perPage ?? 20),
 )
+const displayPerPage = ref<string>(String(localPerPage.value))
 watch(localPerPage, (val) => {
+    displayPerPage.value = String(val)
     if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_PER_PAGE_KEY, String(val))
 })
 
@@ -348,14 +380,22 @@ function loadMore() {
 }
 
 // ── Per-page ──────────────────────────────────────────────────────────────────
+let _perPageTimer: ReturnType<typeof setTimeout> | null = null
+
 function changePerPage(n: string) {
-    localPerPage.value = Number(n)
-    plannerVisit(page.url.split('?')[0], {
-        data: { ...currentFilters.value },
-        preserveScroll: true,
-        only: ['events', 'perPage'],
-        replace: true,
-    })
+    displayPerPage.value = n  // update display freely — no clamping mid-type
+    if (_perPageTimer !== null) clearTimeout(_perPageTimer)
+    _perPageTimer = setTimeout(() => {
+        _perPageTimer = null
+        const clamped = Math.min(100, Math.max(5, Number(n) || 20))
+        localPerPage.value = clamped  // triggers watch → updates displayPerPage + localStorage
+        plannerVisit(page.url.split('?')[0], {
+            data: { ...currentFilters.value },
+            preserveScroll: true,
+            only: ['events', 'perPage'],
+            replace: true,
+        })
+    }, 600)
 }
 
 // ── Table pagination ──────────────────────────────────────────────────────────
@@ -428,23 +468,70 @@ function tableGoToPage(targetPage: number) {
                                         col > 1 ? 'border-l border-border' : '',
                                         listColumns === col ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50',
                                     ]"
-                                    @click="listColumns = col"
+                                    @click="setListColumns(col)"
                                 >{{ col }}</button>
                             </TooltipTrigger>
                             <TooltipContent>{{ col }} column{{ col !== 1 ? 's' : '' }}</TooltipContent>
                         </Tooltip>
                     </div>
-                    <Select :model-value="String(localPerPage)" @update:model-value="changePerPage">
-                        <SelectTrigger class="h-7 w-24 text-xs border-0 bg-transparent shadow-none focus:ring-0 text-muted-foreground">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="10" class="text-xs">10 / page</SelectItem>
-                            <SelectItem value="20" class="text-xs">20 / page</SelectItem>
-                            <SelectItem value="50" class="text-xs">50 / page</SelectItem>
-                            <SelectItem value="100" class="text-xs">100 / page</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div class="flex items-center gap-1 text-xs text-muted-foreground">
+                        <input
+                            type="number"
+                            :value="displayPerPage"
+                            min="5"
+                            max="100"
+                            class="w-12 h-7 rounded-md border border-border bg-transparent px-1.5 text-xs text-center text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring appearance-none [&::-webkit-inner-spin-button]:appearance-auto"
+                            @input="changePerPage(($event.target as HTMLInputElement).value)"
+                        />
+                        <span>/ page</span>
+                    </div>
+                    <!-- Roadmap-specific controls -->
+                    <template v-if="plannerStore.activeView === 'roadmap'">
+                        <Popover v-model:open="zoomPickerOpen">
+                            <PopoverTrigger as-child>
+                                <button
+                                    type="button"
+                                    class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                >
+                                    <Search class="size-3 opacity-60" />
+                                    {{ ZOOM_LEVELS.find((l) => l.value === roadmapZoom)?.label ?? roadmapZoom }}
+                                    <ChevronDown class="size-3 opacity-60" />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" class="w-36 p-1" :side-offset="6">
+                                <p class="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Zoom level</p>
+                                <button
+                                    v-for="level in ZOOM_LEVELS"
+                                    :key="level.value"
+                                    type="button"
+                                    class="flex items-center w-full px-2 py-1.5 text-sm rounded-sm transition-colors hover:bg-muted"
+                                    :class="roadmapZoom === level.value ? 'font-semibold text-foreground' : 'text-muted-foreground'"
+                                    @click="setRoadmapZoom(level.value)"
+                                >
+                                    <Check v-if="roadmapZoom === level.value" class="size-3.5 mr-2 shrink-0 text-primary" />
+                                    <span v-else class="size-3.5 mr-2 shrink-0" />
+                                    {{ level.label }}
+                                </button>
+                            </PopoverContent>
+                        </Popover>
+                        <button
+                            type="button"
+                            class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            @click="roadmapViewRef?.scrollToToday()"
+                        >
+                            <CalendarDays class="size-3.5" />
+                            Today
+                        </button>
+                        <button
+                            type="button"
+                            class="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-colors"
+                            :class="showDependencies ? 'bg-primary/10 border-primary/30 text-primary' : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'"
+                            @click="showDependencies = !showDependencies"
+                        >
+                            <Share2 class="size-3.5" />
+                            Dependencies
+                        </button>
+                    </template>
                     <PlannerViewSwitcher />
                     <Button
                         variant="ghost"
@@ -508,11 +595,14 @@ function tableGoToPage(targetPage: number) {
                     class="flex-1 overflow-hidden min-h-0 flex flex-col"
                 >
                     <PlannerRoadmapView
+                        ref="roadmapViewRef"
                         :milestones="milestones"
                         :events="events"
                         :active-milestone-id="activeMilestoneId"
+                        :zoom="roadmapZoom"
                         @create-event="openCreateEvent"
                         @reschedule="handleRoadmapReschedule"
+                        @load-more="loadMore"
                     />
                 </div>
             </div>
