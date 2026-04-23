@@ -114,9 +114,14 @@ defineOptions({ inheritAttrs: false })
         @dblclick="emit('edit', event)"
     >
         <!-- Row number -->
-        <span class="w-5 shrink-0 text-center text-xs tabular-nums text-muted-foreground/60 group-hover:text-foreground/70 select-none leading-none font-medium">
-            {{ rowNumber ?? '' }}
-        </span>
+        <Tooltip>
+            <TooltipTrigger as-child>
+                <span class="w-5 shrink-0 text-center text-xs tabular-nums text-muted-foreground/60 group-hover:text-foreground/70 select-none leading-none font-medium cursor-help">
+                    {{ rowNumber ?? '' }}
+                </span>
+            </TooltipTrigger>
+            <TooltipContent>Row {{ rowNumber }}</TooltipContent>
+        </Tooltip>
 
         <!-- Status toggle -->
         <Tooltip>
@@ -188,10 +193,15 @@ defineOptions({ inheritAttrs: false })
             <!-- Meta row -->
             <div class="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
                 <!-- Date/time -->
-                <span v-if="dateRange" class="flex items-center gap-1">
-                    <Clock class="size-3" />
-                    {{ dateRange }}
-                </span>
+                <Tooltip v-if="dateRange">
+                    <TooltipTrigger as-child>
+                        <span class="flex items-center gap-1 whitespace-nowrap cursor-help">
+                            <Clock class="size-3 shrink-0" />
+                            {{ dateRange }}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Scheduled {{ event.is_all_day ? 'all day' : 'date and time' }}</TooltipContent>
+                </Tooltip>
 
                 <!-- Breach badge -->
                 <span
@@ -203,10 +213,15 @@ defineOptions({ inheritAttrs: false })
                 </span>
 
                 <!-- Location -->
-                <span v-if="event.location" class="flex items-center gap-1 truncate max-w-50">
-                    <MapPin class="size-3 shrink-0" />
-                    {{ event.location }}
-                </span>
+                <Tooltip v-if="event.location">
+                    <TooltipTrigger as-child>
+                        <span class="flex items-center gap-1 truncate max-w-50 cursor-help">
+                            <MapPin class="size-3 shrink-0" />
+                            {{ event.location }}
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Location: {{ event.location }}</TooltipContent>
+                </Tooltip>
 
                 <!-- Milestone label (Backlog view) -->
                 <span v-if="showMilestone && event.milestone" class="flex items-center gap-1 text-[11px]">

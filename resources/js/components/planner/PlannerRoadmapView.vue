@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, provide, ref, nextTick, watch, onMounted } from 'vue'
+import { onClickOutside, useElementSize } from '@vueuse/core'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next'
 import {
     useRoadmapLayout,
@@ -18,6 +19,7 @@ const props = defineProps<{
     events: PaginatedData<PlannerEvent> | undefined
     activeMilestoneId: string | null
     zoom: ZoomLevel
+    fitMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -32,10 +34,27 @@ const sidebarCollapsed = ref(false)
 const loadingMore = ref(false)
 
 watch(() => props.events, () => { loadingMore.value = false })
-
+// ── Selection ────────────────────────────────────────────────────────
+const selectedId = ref<string | null>(null)
+const rootEl = ref<HTMLElement | null>(null)
+onClickOutside(
+    rootEl,
+    () => { selectedId.value = null },
+    {
+        ignore: [
+            '[data-reka-popper-content-wrapper]',
+            '[role="dialog"]',
+            '[role="menu"]',
+            '[data-sonner-toaster]',
+        ],
+    },
+)
 // ── Row height (px) ───────────────────────────────────────────────────────────
-
-const ROW_HEIGHT = 44
+// In fit mode this is recomputed from the visible timeline height so all rows
+// fit without vertical scrolling. A minimum keeps bars clickable.
+const BASE_ROW_HEIGHT = 44
+const MIN_FIT_ROW_HEIGHT = 18
+const HEADER_HEIGHT = 52
 
 // ── View state ────────────────────────────────────────────────────────────────
 
@@ -90,15 +109,10 @@ watch(
 watch(
     () => props.events,
     (val) => {
-        // Only update when we actually have data — skip the undefined deferred state
+        // Parent (Index.vue) already accumulates pages into events.data, so we
+        // just mirror the latest array. Skip the undefined deferred state.
         if (!val) return
-        const newMap = new Map(val.data.map((e) => [e.id, e]))
-        const kept = localEvents.value.filter((e) => newMap.has(e.id)).map((e) => newMap.get(e.id)!)
-        const existingIds = new Set(localEvents.value.map((e) => e.id))
-        for (const e of val.data) {
-            if (!existingIds.has(e.id)) kept.push(e)
-        }
-        localEvents.value = kept
+        localEvents.value = [...val.data]
     },
 )
 
@@ -121,8 +135,27 @@ const allItems = computed(() => [
 
 // ── Layout (provided to all child bars) ──────────────────────────────────────
 
-const layout = useRoadmapLayout(computed(() => props.zoom), allItems)
+const timelineScrollEl = ref<HTMLElement | null>(null)
+const { width: timelineViewportWidth, height: timelineViewportHeight } = useElementSize(timelineScrollEl)
+const fitEnabled = computed(() => !!props.fitMode)
+
+const layout = useRoadmapLayout(
+    computed(() => props.zoom),
+    allItems,
+    { enabled: fitEnabled, viewportWidth: timelineViewportWidth },
+)
 provide(ROADMAP_LAYOUT_KEY, layout)
+
+// Effective row height — shrinks in fit mode so all rows fit vertically.
+const ROW_HEIGHT = computed(() => {
+    if (!fitEnabled.value || !rows.value.length || timelineViewportHeight.value <= 0) return BASE_ROW_HEIGHT
+    const available = timelineViewportHeight.value - HEADER_HEIGHT
+    if (available <= 0) return BASE_ROW_HEIGHT
+    // Reserve one extra row's worth of space for the "Show more" button if visible
+    const divisor = rows.value.length + (props.events?.next_page_url ? 1 : 0)
+    const fitted = Math.floor(available / divisor)
+    return Math.max(MIN_FIT_ROW_HEIGHT, Math.min(BASE_ROW_HEIGHT, fitted))
+})
 
 // ── Flat row list ─────────────────────────────────────────────────────────────
 
@@ -160,7 +193,6 @@ const rows = computed((): RoadmapRow[] => {
 // ── Scroll sync ───────────────────────────────────────────────────────────────
 
 const sidebarScrollEl = ref<HTMLElement | null>(null)
-const timelineScrollEl = ref<HTMLElement | null>(null)
 let syncing = false
 
 function onSidebarScroll() {
@@ -263,7 +295,7 @@ defineExpose({ scrollToToday })
 </script>
 
 <template>
-    <div class="flex flex-col h-full overflow-hidden">
+    <div ref="rootEl" class="flex flex-col h-full overflow-hidden">
         <!-- Empty state -->
         <PlannerEmptyState
             v-if="!hasAnyDates"
@@ -308,7 +340,9 @@ defineExpose({ scrollToToday })
                         :rows="rows"
                         :expanded-milestone-ids="expandedMilestoneIds"
                         :row-height="ROW_HEIGHT"
+                        :selected-id="selectedId"
                         @toggle-milestone="toggleMilestone"
+                        @select="selectedId = $event"
                     />
 
                     <!-- Load more -->
@@ -378,16 +412,18 @@ defineExpose({ scrollToToday })
                                 :item="row.milestone"
                                 kind="milestone"
                                 :row-height="ROW_HEIGHT"
+                                :is-selected="selectedId === row.milestone.id"
                                 @reschedule="handleReschedule"
-                                @click="() => {}"
+                                @click="selectedId = row.milestone.id"
                             />
                             <PlannerTimelineBar
                                 v-else
                                 :item="row.event"
                                 kind="event"
                                 :row-height="ROW_HEIGHT"
+                                :is-selected="selectedId === row.event.id"
                                 @reschedule="handleReschedule"
-                                @click="() => {}"
+                                @click="selectedId = row.event.id"
                             />
                         </div>
                     </div>

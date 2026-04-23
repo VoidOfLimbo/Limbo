@@ -26,8 +26,8 @@ class PlannerSeeder extends Seeder
     {
         $user = User::where('email', 'bipin.paneru.9@gmail.com')->firstOrFail();
 
-        // ── Tags — every possible colour, used for filter testing ─────────────
-        $tags = collect([
+        // ── Tags — idempotent: re-running this seeder reuses existing tags. ────
+        $tagDefs = [
             ['name' => 'health',   'color' => '#22c55e'],
             ['name' => 'career',   'color' => '#3b82f6'],
             ['name' => 'finance',  'color' => '#f59e0b'],
@@ -37,7 +37,12 @@ class PlannerSeeder extends Seeder
             ['name' => 'home',     'color' => '#f97316'],
             ['name' => 'urgent',   'color' => '#ef4444'],
             ['name' => 'research', 'color' => '#64748b'],
-        ])->map(fn ($attrs) => Tag::factory()->create([...$attrs, 'user_id' => $user->id]));
+        ];
+
+        $tags = collect($tagDefs)->map(fn ($attrs) => Tag::firstOrCreate(
+            ['user_id' => $user->id, 'name' => $attrs['name']],
+            ['color' => $attrs['color']],
+        ));
 
         $t = $tags->keyBy('name');
 
@@ -909,5 +914,61 @@ class PlannerSeeder extends Seeder
             'start_at' => now()->addWeeks(2)->addDays(2),
             'end_at' => now()->addWeeks(2)->addDays(2)->addMinutes(20),
         ]);
+
+        // ─────────────────────────────────────────────────────────────────────
+        // MILESTONE 8 — Ignorable priority, Active
+        //   Tests the lowest-priority badge / sort order on milestone + events
+        // ─────────────────────────────────────────────────────────────────────
+        $msIdeas = Milestone::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'Someday / Maybe Ideas',
+            'description' => 'Low-stakes ideas to revisit when bandwidth allows. Nothing here is urgent.',
+            'status' => MilestoneStatus::Active,
+            'priority' => MilestonePriority::Ignorable,
+            'color' => '#94a3b8',
+            'start_at' => now()->subWeeks(2),
+            'end_at' => now()->addMonths(12),
+            'visibility' => 'private',
+        ]);
+        $msIdeas->tags()->attach([$t['research']->id]);
+
+        foreach ([
+            ['Try a new keyboard layout (Colemak)',     EventStatus::Draft],
+            ['Read up on Bayesian statistics',          EventStatus::Draft],
+            ['Sketch a board-game concept',             EventStatus::Upcoming],
+            ['Compile a list of weird domain names',    EventStatus::Draft],
+        ] as [$title, $status]) {
+            Event::factory()->create([
+                'user_id' => $user->id,
+                'milestone_id' => $msIdeas->id,
+                'title' => $title,
+                'type' => EventType::Task,
+                'status' => $status,
+                'priority' => EventPriority::Ignorable,
+                'start_at' => now()->addWeeks(rand(1, 12)),
+                'end_at' => now()->addWeeks(rand(13, 26)),
+                'visibility' => EventVisibility::Private,
+            ])->tags()->attach([$t['research']->id]);
+        }
+
+        // A handful of Ignorable backlog items
+        foreach ([
+            'Catalogue old USB drives',
+            'Alphabetise spice rack',
+            'Print 2024 photo album',
+            'Update LinkedIn cover image',
+        ] as $title) {
+            Event::factory()->create([
+                'user_id' => $user->id,
+                'milestone_id' => null,
+                'title' => $title,
+                'type' => EventType::Task,
+                'status' => EventStatus::Draft,
+                'priority' => EventPriority::Ignorable,
+                'start_at' => now()->addMonths(rand(1, 6)),
+                'end_at' => now()->addMonths(rand(7, 12)),
+                'visibility' => EventVisibility::Private,
+            ])->tags()->attach([$t['home']->id]);
+        }
     }
 }

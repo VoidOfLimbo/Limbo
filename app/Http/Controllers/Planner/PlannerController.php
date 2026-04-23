@@ -11,7 +11,6 @@ use App\Models\PlannerView;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +22,7 @@ class PlannerController extends Controller
         $filters = $request->only(['status', 'priority', 'tags', 'date_from', 'date_to', 'show_snoozed']);
         $view = $request->header('X-Planner-View', 'list');
         $perPage = (int) $request->header('X-Planner-Per-Page', 20);
-        $perPage = in_array($perPage, [10, 20, 50, 100]) ? $perPage : 20;
+        $perPage = max(5, min(100, $perPage > 0 ? $perPage : 20));
 
         $milestones = Milestone::query()
             ->forUser($user->id)
@@ -73,27 +72,20 @@ class PlannerController extends Controller
         ];
 
         if (! $showingDashboard) {
-            if ($view === 'board' || $view === 'roadmap') {
-                $props['events'] = Inertia::defer(function () use ($user, $activeMilestoneId, $filters, $request, $view) {
-                    // Board: return all matching events (no pagination) scoped to milestone.
-                    // Roadmap on the dashboard (no milestone): return all user events for
-                    // a cross-milestone overview. Roadmap on a milestone: scope to that milestone.
-                    $skipMilestoneFilter = $view === 'roadmap' && $activeMilestoneId === null;
-                    $milestoneFilter = $skipMilestoneFilter ? null : $activeMilestoneId;
-                    $items = $this->buildEventsQuery($user->id, $milestoneFilter, $filters, $skipMilestoneFilter)->get();
+            // Roadmap on the dashboard (no milestone) is a cross-milestone overview;
+            // we still paginate but skip the milestone-id scope.
+            $skipMilestoneFilter = $view === 'roadmap' && $activeMilestoneId === null;
+            $milestoneFilter = $skipMilestoneFilter ? null : $activeMilestoneId;
 
-                    return new LengthAwarePaginator(
-                        $items,
-                        $items->count(),
-                        max($items->count(), 1),
-                        1,
-                        ['path' => $request->url()],
-                    );
-                });
-            } else {
-                $props['perPage'] = $perPage;
-                $props['events'] = Inertia::defer(fn () => $this->buildEventsQuery($user->id, $activeMilestoneId, $filters)->paginate($perPage));
-            }
+            // Optional one-shot "load all" (used by board's "Load all available" button).
+            $loadAll = $request->header('X-Planner-All') === '1';
+            $effectivePerPage = $loadAll ? 10000 : $perPage;
+
+            $props['perPage'] = $perPage;
+            $props['events'] = Inertia::defer(fn () => $this
+                ->buildEventsQuery($user->id, $milestoneFilter, $filters, $skipMilestoneFilter)
+                ->paginate($effectivePerPage));
+
             $props['tags'] = Inertia::defer(fn () => Tag::query()->where('user_id', $user->id)->orderBy('name')->get());
             $props['fields'] = Inertia::defer(fn () => PlannerField::query()
                 ->where('user_id', $user->id)

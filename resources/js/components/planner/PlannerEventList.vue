@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Loader2 } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
+import { onClickOutside } from '@vueuse/core'
 import PlannerEmptyState from '@/components/planner/PlannerEmptyState.vue'
 import PlannerEventRow from '@/components/planner/PlannerEventRow.vue'
 import { Button } from '@/components/ui/button'
@@ -44,12 +45,27 @@ const emit = defineEmits<{
 
 // ── Selection & keyboard navigation ──────────────────────────────────────
 const selectedId = ref<number | null>(null)
+const listRef = ref<HTMLElement | null>(null)
 
 const allEvents = computed(() => props.events?.data ?? [])
 const selectedIndex = computed(() => allEvents.value.findIndex((e) => e.id === selectedId.value))
 
 // Clear selection when event list changes (e.g. filter/page change)
 watch(() => props.events?.data, () => { selectedId.value = null })
+
+// Clear selection when clicking outside the list (ignoring popovers/dialogs)
+onClickOutside(
+    listRef,
+    () => { selectedId.value = null },
+    {
+        ignore: [
+            '[data-reka-popper-content-wrapper]',
+            '[role="dialog"]',
+            '[role="menu"]',
+            '[data-sonner-toaster]',
+        ],
+    },
+)
 
 function onKeydown(e: KeyboardEvent) {
     if (!['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) return
@@ -71,7 +87,7 @@ function onKeydown(e: KeyboardEvent) {
 </script>
 
 <template>
-    <div class="flex flex-col flex-1 overflow-y-auto focus:outline-none" tabindex="0" @keydown="onKeydown">
+    <div ref="listRef" class="flex flex-col flex-1 overflow-y-auto focus:outline-none" tabindex="0" @keydown="onKeydown">
         <!-- Skeleton state (deferred props loading) -->
         <template v-if="events === undefined">
             <div v-for="i in 6" :key="i" class="flex items-start gap-3 px-4 py-3 border-b border-border/50">
@@ -110,11 +126,7 @@ function onKeydown(e: KeyboardEvent) {
                     v-for="(row, ri) in rowChunks"
                     :key="ri"
                     class="grid"
-                    :class="{
-                        'grid-cols-2': (columns ?? 1) === 2,
-                        'grid-cols-3': (columns ?? 1) === 3,
-                        'grid-cols-4': (columns ?? 1) === 4,
-                    }"
+                    :style="{ gridTemplateColumns: `repeat(${columns ?? 1}, minmax(300px, 1fr))` }"
                 >
                     <PlannerEventRow
                         v-for="cell in row"
@@ -136,7 +148,10 @@ function onKeydown(e: KeyboardEvent) {
             </div>
 
             <!-- Load more (pagination) -->
-            <div v-if="events.next_page_url" class="flex justify-center py-4">
+            <div v-if="events.next_page_url" class="flex flex-col items-center gap-2 py-4">
+                <span class="text-xs text-muted-foreground">
+                    Showing {{ events.data.length }} of {{ events.total }}
+                </span>
                 <Button
                     variant="outline"
                     size="sm"

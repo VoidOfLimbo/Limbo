@@ -130,7 +130,7 @@ Current snapshot of what exists in the codebase. Updated manually as features ar
 > **Status: Complete ✅**
 
 **Design decisions:**
-- `per_page` stored in `localStorage`, sent as `X-Planner-Per-Page` header — never in URL
+- `per_page` is **session-only** (component `ref`, no persistence) — sent as `X-Planner-Per-Page` header — never in URL. Resets to backend default (20) on hard refresh.
 - `view` (list/table/board) stored in `localStorage` + Pinia, sent as `X-Planner-View` header — never in URL
 - **List view**: manual "Load more" button (appends pages client-side)
 - **Table view**: traditional paginator footer (prev / next, page X of Y)

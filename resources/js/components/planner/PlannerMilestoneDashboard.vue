@@ -5,7 +5,7 @@ import { router, usePage } from '@inertiajs/vue3'
 import {
     Search, LayoutGrid, LayoutList, Plus, Archive,
     CalendarRange, CalendarDays, Activity, Flag, CalendarClock, Eye, Timer,
-    SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown, X,
+    ArrowUp, ArrowDown,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
-    DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator,
+    DropdownMenuLabel, DropdownMenuSeparator,
     DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu'
 import PlannerMilestoneCard from '@/components/planner/PlannerMilestoneCard.vue'
@@ -60,24 +60,6 @@ const GROUP_OPTIONS: { value: GroupByKey; label: string; icon: unknown }[] = [
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const STATUS_ORDER = ['Active', 'Paused', 'Completed', 'Cancelled']
 const PRIORITY_ORDER = ['Critical', 'High', 'Medium', 'Low']
-
-// ── Filters ───────────────────────────────────────────────────────────────────
-const filterStatus = ref<Set<string>>(new Set())
-const filterPriority = ref<Set<string>>(new Set())
-
-function toggleStatus(val: string) {
-    const s = new Set(filterStatus.value)
-    if (s.has(val)) { s.delete(val) } else { s.add(val) }
-    filterStatus.value = s
-}
-
-function togglePriority(val: string) {
-    const s = new Set(filterPriority.value)
-    if (s.has(val)) { s.delete(val) } else { s.add(val) }
-    filterPriority.value = s
-}
-
-const activeFilterCount = computed(() => filterStatus.value.size + filterPriority.value.size)
 
 // ── Sort ─────────────────────────────────────────────────────────────────────
 type SortField = 'title' | 'progress' | 'start_at' | 'end_at' | 'events'
@@ -149,14 +131,6 @@ const filtered = computed(() => {
     // Search
     const q = search.value.trim().toLowerCase()
     if (q) result = result.filter((m) => m.title.toLowerCase().includes(q))
-
-    // Status filter
-    if (filterStatus.value.size > 0)
-        result = result.filter((m) => filterStatus.value.has(m.status))
-
-    // Priority filter
-    if (filterPriority.value.size > 0)
-        result = result.filter((m) => filterPriority.value.has(m.priority))
 
     // Sort
     return [...result].sort((a, b) => {
@@ -275,50 +249,6 @@ const totalPages = computed(() => Math.max(1, Math.ceil(totalActiveItems.value /
                             {{ opt.label }}
                         </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-            </DropdownMenu>
-
-            <!-- Filter -->
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs" :class="activeFilterCount > 0 ? 'border-primary text-primary' : ''">
-                        <SlidersHorizontal class="size-3.5" />
-                        Filter
-                        <span v-if="activeFilterCount > 0" class="inline-flex items-center justify-center size-4 rounded-full bg-primary text-primary-foreground text-[10px] font-medium">
-                            {{ activeFilterCount }}
-                        </span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" class="min-w-44">
-                    <DropdownMenuLabel class="text-xs">Status</DropdownMenuLabel>
-                    <DropdownMenuCheckboxItem
-                        v-for="s in STATUS_ORDER"
-                        :key="s"
-                        :checked="filterStatus.has(s.toLowerCase())"
-                        class="text-xs"
-                        @update:checked="toggleStatus(s.toLowerCase())"
-                    >{{ s }}</DropdownMenuCheckboxItem>
-
-                    <DropdownMenuSeparator />
-
-                    <DropdownMenuLabel class="text-xs">Priority</DropdownMenuLabel>
-                    <DropdownMenuCheckboxItem
-                        v-for="p in PRIORITY_ORDER"
-                        :key="p"
-                        :checked="filterPriority.has(p.toLowerCase())"
-                        class="text-xs"
-                        @update:checked="togglePriority(p.toLowerCase())"
-                    >{{ p }}</DropdownMenuCheckboxItem>
-
-                    <template v-if="activeFilterCount > 0">
-                        <DropdownMenuSeparator />
-                        <button
-                            class="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded"
-                            @click="filterStatus = new Set(); filterPriority = new Set()"
-                        >
-                            <X class="size-3" /> Clear filters
-                        </button>
-                    </template>
                 </DropdownMenuContent>
             </DropdownMenu>
 

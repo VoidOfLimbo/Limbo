@@ -9,7 +9,7 @@ export interface PlannerMilestone {
     title: string
     description: string | null
     status: 'active' | 'completed' | 'paused' | 'cancelled'
-    priority: 'low' | 'medium' | 'high' | 'critical'
+    priority: 'ignorable' | 'low' | 'medium' | 'high' | 'critical'
     start_at: string | null
     end_at: string | null
     duration_source: 'manual' | 'derived'
@@ -31,7 +31,7 @@ export interface PlannerMilestone {
 }
 
 export type EventStatus = 'draft' | 'upcoming' | 'in_progress' | 'completed' | 'cancelled' | 'skipped'
-export type EventPriority = 'low' | 'medium' | 'high' | 'critical'
+export type EventPriority = 'ignorable' | 'low' | 'medium' | 'high' | 'critical'
 export type EventType = 'event' | 'task' | 'milestone_marker'
 
 export interface PlannerEvent {

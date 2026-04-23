@@ -9,6 +9,7 @@ const props = defineProps<{
     item: BarItem
     kind: 'milestone' | 'event'
     rowHeight: number
+    isSelected?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -198,6 +199,7 @@ const resizeRightDelta = computed(() => {
                     ? 'opacity-90 hover:opacity-100'
                     : 'opacity-80 hover:opacity-100',
                 isDragging ? 'shadow-lg ring-2 ring-primary/30' : '',
+                isSelected ? 'ring-2 ring-primary ring-offset-1 ring-offset-background opacity-100' : '',
             ]"
             :style="{
                 backgroundColor: barColor ?? (kind === 'milestone' ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.6)'),

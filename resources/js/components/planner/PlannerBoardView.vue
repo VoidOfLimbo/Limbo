@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { Columns3 } from 'lucide-vue-next'
+import { ArrowDownToLine, Columns3, Loader2 } from 'lucide-vue-next'
 import { update as updateEvent, store as storeEvent } from '@/actions/App/Http/Controllers/Planner/EventController'
 import PlannerBoardColumn from '@/components/planner/PlannerBoardColumn.vue'
 import type { PlannerEvent, PlannerField, PlannerFieldOption, EventStatus } from '@/types/planner'
@@ -10,6 +10,9 @@ const props = defineProps<{
     events: PlannerEvent[]
     activeMilestoneId?: string | null
     fields?: PlannerField[]
+    hasMore?: boolean
+    total?: number
+    loadingAll?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -18,6 +21,7 @@ const emit = defineEmits<{
     delete: [event: PlannerEvent]
     toggleStatus: [event: PlannerEvent]
     duplicate: [event: PlannerEvent]
+    loadAll: []
 }>()
 
 // ── Group-by selector ────────────────────────────────────────────────────────
@@ -131,12 +135,12 @@ const activeGroupLabel = computed(
 </script>
 
 <template>
-    <div class="flex-1 overflow-x-auto overflow-y-hidden">
+    <div class="flex flex-col h-full overflow-hidden">
         <!-- Group-by toolbar -->
         <div class="flex items-center gap-2 px-4 py-2 border-b border-border shrink-0 relative">
             <div class="relative">
                 <button
-                    class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                     @click.stop="showGroupPicker = !showGroupPicker"
                 >
                     <Columns3 class="size-3.5" />
@@ -151,7 +155,7 @@ const activeGroupLabel = computed(
                     <button
                         v-for="opt in groupOptions"
                         :key="opt.id"
-                        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground text-left transition-colors"
+                        class="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground text-left transition-colors cursor-pointer"
                         :class="groupById === opt.id ? 'text-foreground font-medium' : 'text-muted-foreground'"
                         @click="setGroupBy(opt.id)"
                     >
@@ -163,26 +167,51 @@ const activeGroupLabel = computed(
                     </button>
                 </div>
             </div>
+
+            <div class="flex-1" />
+
+            <span class="text-[11px] text-muted-foreground tabular-nums">
+                {{ events.length }}<template v-if="total"> of {{ total }}</template> loaded
+            </span>
+            <button
+                v-if="hasMore"
+                type="button"
+                class="group flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-primary/40 bg-primary/10 text-primary shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all cursor-pointer animate-in fade-in slide-in-from-right-2 duration-300 disabled:opacity-60 disabled:cursor-wait"
+                :disabled="loadingAll"
+                @click="emit('loadAll')"
+            >
+                <Loader2 v-if="loadingAll" class="size-3.5 animate-spin" />
+                <ArrowDownToLine v-else class="size-3.5 transition-transform group-hover:translate-y-0.5" />
+                {{ loadingAll ? 'Loading…' : 'Load all available' }}
+                <span
+                    v-if="!loadingAll && total"
+                    class="ml-0.5 inline-flex items-center justify-center min-w-5 h-4 px-1 rounded-full bg-primary/20 text-primary text-[10px] font-semibold tabular-nums group-hover:bg-primary-foreground/20 group-hover:text-primary-foreground"
+                >
+                    +{{ Math.max(0, total - events.length) }}
+                </span>
+            </button>
         </div>
 
         <!-- Board columns -->
-        <div class="flex h-[calc(100%-41px)] gap-3 p-4 min-w-max" @click="showGroupPicker = false">
-            <PlannerBoardColumn
-                v-for="col in columnEvents"
-                :key="col.id"
-                :column-id="col.id"
-                :label="col.label"
-                :color="col.color"
-                :events="col.events"
-                :all-events="events"
-                @card-moved="onCardMoved"
-                @add-card="(title) => onAddCard(col.id, title)"
-                @edit="emit('edit', $event)"
-                @snooze="emit('snooze', $event)"
-                @delete="emit('delete', $event)"
-                @toggle-status="emit('toggleStatus', $event)"
-                @duplicate="emit('duplicate', $event)"
-            />
+        <div class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden" @click="showGroupPicker = false">
+            <div class="flex h-full gap-3 p-4 min-w-max">
+                <PlannerBoardColumn
+                    v-for="col in columnEvents"
+                    :key="col.id"
+                    :column-id="col.id"
+                    :label="col.label"
+                    :color="col.color"
+                    :events="col.events"
+                    :all-events="events"
+                    @card-moved="onCardMoved"
+                    @add-card="(title) => onAddCard(col.id, title)"
+                    @edit="emit('edit', $event)"
+                    @snooze="emit('snooze', $event)"
+                    @delete="emit('delete', $event)"
+                    @toggle-status="emit('toggleStatus', $event)"
+                    @duplicate="emit('duplicate', $event)"
+                />
+            </div>
         </div>
     </div>
 </template>

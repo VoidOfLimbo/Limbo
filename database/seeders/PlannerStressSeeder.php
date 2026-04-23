@@ -51,25 +51,23 @@ class PlannerStressSeeder extends Seeder
         $user = User::where('email', 'bipin.paneru.9@gmail.com')->firstOrFail();
 
         // Re-use existing tags created by PlannerSeeder, or create them fresh.
-        $tags = Tag::where('user_id', $user->id)->get();
+        // firstOrCreate makes this idempotent across multiple seeder runs.
+        $tagDefs = [
+            ['name' => 'health',   'color' => '#22c55e'],
+            ['name' => 'career',   'color' => '#3b82f6'],
+            ['name' => 'finance',  'color' => '#f59e0b'],
+            ['name' => 'learning', 'color' => '#a855f7'],
+            ['name' => 'social',   'color' => '#ec4899'],
+            ['name' => 'travel',   'color' => '#06b6d4'],
+            ['name' => 'home',     'color' => '#f97316'],
+            ['name' => 'urgent',   'color' => '#ef4444'],
+            ['name' => 'research', 'color' => '#64748b'],
+        ];
 
-        if ($tags->isEmpty()) {
-            $tagDefs = [
-                ['name' => 'health',   'color' => '#22c55e'],
-                ['name' => 'career',   'color' => '#3b82f6'],
-                ['name' => 'finance',  'color' => '#f59e0b'],
-                ['name' => 'learning', 'color' => '#a855f7'],
-                ['name' => 'social',   'color' => '#ec4899'],
-                ['name' => 'travel',   'color' => '#06b6d4'],
-                ['name' => 'home',     'color' => '#f97316'],
-                ['name' => 'urgent',   'color' => '#ef4444'],
-                ['name' => 'research', 'color' => '#64748b'],
-            ];
-
-            $tags = collect($tagDefs)->map(
-                fn ($attrs) => Tag::factory()->create([...$attrs, 'user_id' => $user->id])
-            );
-        }
+        $tags = collect($tagDefs)->map(fn ($attrs) => Tag::firstOrCreate(
+            ['user_id' => $user->id, 'name' => $attrs['name']],
+            ['color' => $attrs['color']],
+        ));
 
         $this->tagIds = $tags->pluck('id')->toArray();
         $this->allStatuses = EventStatus::cases();
@@ -395,7 +393,92 @@ class PlannerStressSeeder extends Seeder
             }
         }
 
-        $this->command->info('[Stress] Complete — ~125 milestones + ~1 000 events + 100 backlog items created.');
+        // ─────────────────────────────────────────────────────────────────────
+        // SCENARIO 11: Ignorable-priority coverage
+        //   - 8 × Active milestones with Ignorable priority + nested events
+        //   - 40 × backlog events with Ignorable priority across all statuses
+        //   Tests: lowest-priority badge, sort order, filter chip rendering
+        // ─────────────────────────────────────────────────────────────────────
+        $this->command->info('[Stress] Scenario 11: Ignorable priority — 8 milestones + 40 backlog events');
+        for ($i = 0; $i < 8; $i++) {
+            $milestone = Milestone::factory()->create([
+                'user_id' => $userId,
+                'status' => MilestoneStatus::Active,
+                'priority' => MilestonePriority::Ignorable,
+                'start_at' => now()->subWeeks(rand(0, 4)),
+                'end_at' => now()->addMonths(rand(2, 12)),
+                'color' => fake()->hexColor(),
+            ]);
+
+            $this->attachRandomTags($milestone, rand(0, 2));
+
+            $eventCount = rand(3, 8);
+            for ($j = 0; $j < $eventCount; $j++) {
+                $start = fake()->dateTimeBetween('-1 month', '+6 months');
+                $event = Event::factory()->create([
+                    'user_id' => $userId,
+                    'milestone_id' => $milestone->id,
+                    'status' => fake()->randomElement([
+                        EventStatus::Draft,
+                        EventStatus::Upcoming,
+                        EventStatus::InProgress,
+                        EventStatus::Completed,
+                    ]),
+                    'type' => fake()->randomElement($this->allTypes),
+                    'priority' => EventPriority::Ignorable,
+                    'start_at' => $start,
+                    'end_at' => (clone $start)->modify('+'.rand(1, 6).' hours'),
+                ]);
+                if (rand(0, 1)) {
+                    $event->tags()->attach(fake()->randomElements($this->tagIds, rand(1, 2)));
+                }
+            }
+        }
+
+        for ($i = 0; $i < 40; $i++) {
+            $status = fake()->randomElement($this->allStatuses);
+            $start = fake()->dateTimeBetween('-3 months', '+6 months');
+            $event = Event::factory()->create([
+                'user_id' => $userId,
+                'milestone_id' => null,
+                'status' => $status,
+                'type' => fake()->randomElement($this->allTypes),
+                'priority' => EventPriority::Ignorable,
+                'start_at' => $start,
+                'end_at' => (clone $start)->modify('+'.rand(1, 8).' hours'),
+                'visibility' => fake()->randomElement($this->allVisibilities),
+            ]);
+            if (rand(0, 1)) {
+                $event->tags()->attach(fake()->randomElements($this->tagIds, rand(1, 2)));
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // SCENARIO 12: All-priorities-balanced sample
+        //   25 backlog events, exactly 5 per priority level (incl. Ignorable)
+        //   Tests: priority distribution, group-by-priority bucketing
+        // ─────────────────────────────────────────────────────────────────────
+        $this->command->info('[Stress] Scenario 12: Balanced priority sample — 25 backlog events');
+        foreach ($this->allPriorities as $priority) {
+            for ($k = 0; $k < 5; $k++) {
+                $start = fake()->dateTimeBetween('-2 months', '+4 months');
+                Event::factory()->create([
+                    'user_id' => $userId,
+                    'milestone_id' => null,
+                    'status' => fake()->randomElement([
+                        EventStatus::Draft,
+                        EventStatus::Upcoming,
+                        EventStatus::InProgress,
+                    ]),
+                    'type' => fake()->randomElement([EventType::Task, EventType::Event]),
+                    'priority' => $priority,
+                    'start_at' => $start,
+                    'end_at' => (clone $start)->modify('+'.rand(1, 4).' hours'),
+                ]);
+            }
+        }
+
+        $this->command->info('[Stress] Complete — additive run finished. Re-run to stack more data.');
     }
 
     /**

@@ -58,11 +58,11 @@ export const ROADMAP_LAYOUT_KEY: InjectionKey<RoadmapLayoutContext> = Symbol('ro
 
 // ── Composable ────────────────────────────────────────────────────────────────
 
-export function useRoadmapLayout(zoom: Ref<ZoomLevel>, items: Ref<RoadmapItem[]>): RoadmapLayoutContext {
-    const columnWidth = computed(() => COLUMN_WIDTH[zoom.value])
-
-    const pxPerDay = computed(() => columnWidth.value / DAYS_PER_UNIT[zoom.value])
-
+export function useRoadmapLayout(
+    zoom: Ref<ZoomLevel>,
+    items: Ref<RoadmapItem[]>,
+    fit?: { enabled: Ref<boolean>; viewportWidth: Ref<number> },
+): RoadmapLayoutContext {
     const today = new Date()
 
     const allTimestamps = computed(() => {
@@ -84,27 +84,72 @@ export function useRoadmapLayout(zoom: Ref<ZoomLevel>, items: Ref<RoadmapItem[]>
         return new Date(Math.max(...allTimestamps.value))
     })
 
-    const viewStart = computed(() => addUnits(earliestDate.value, -3, zoom.value))
-    const viewEnd = computed(() => addUnits(latestDate.value, 3, zoom.value))
+    // ── Effective zoom ──
+    // In fit mode, pick a unit that yields sensible header density for the range.
+    const effectiveZoom = computed<ZoomLevel>(() => {
+        if (!fit?.enabled.value) return zoom.value
+        const days = Math.max(
+            (latestDate.value.getTime() - earliestDate.value.getTime()) / 86_400_000,
+            1,
+        )
+        if (days <= 14) return 'day'
+        if (days <= 90) return 'week'
+        if (days <= 540) return 'month'
+        if (days <= 1460) return 'quarter'
+        return 'year'
+    })
+
+    // ── View bounds ──
+    // In fit mode: tight to items (no padding).
+    // Otherwise: pad ±3 units so the user can scroll past the edges.
+    const viewStart = computed(() =>
+        fit?.enabled.value ? earliestDate.value : addUnits(earliestDate.value, -3, effectiveZoom.value),
+    )
+    const viewEnd = computed(() =>
+        fit?.enabled.value ? latestDate.value : addUnits(latestDate.value, 3, effectiveZoom.value),
+    )
+
+    // ── Column width ──
+    // In fit mode: scale so total width matches viewport.
+    const columnWidth = computed(() => {
+        if (fit?.enabled.value && fit.viewportWidth.value > 0) {
+            const units = Math.max(differenceInUnits(viewEnd.value, viewStart.value, effectiveZoom.value), 1)
+            // Leave a small horizontal margin so the rightmost bar isn't flush against the edge
+            return Math.max(20, (fit.viewportWidth.value - 8) / units)
+        }
+        return COLUMN_WIDTH[effectiveZoom.value]
+    })
+
+    const pxPerDay = computed(() => columnWidth.value / DAYS_PER_UNIT[effectiveZoom.value])
 
     const totalWidth = computed(() =>
-        Math.max(differenceInUnits(viewEnd.value, viewStart.value, zoom.value), 1) * columnWidth.value,
+        Math.max(differenceInUnits(viewEnd.value, viewStart.value, effectiveZoom.value), 1) * columnWidth.value,
     )
 
     function dateToX(date: Date | string): number {
         const d = typeof date === 'string' ? new Date(date) : date
-        return differenceInUnits(d, viewStart.value, zoom.value) * columnWidth.value
+        return differenceInUnits(d, viewStart.value, effectiveZoom.value) * columnWidth.value
     }
 
     function xToDate(x: number): Date {
-        return addUnits(viewStart.value, x / columnWidth.value, zoom.value)
+        return addUnits(viewStart.value, x / columnWidth.value, effectiveZoom.value)
     }
 
     function widthFromDuration(start: Date | string, end: Date | string): number {
         const s = typeof start === 'string' ? new Date(start) : start
         const e = typeof end === 'string' ? new Date(end) : end
-        return Math.max(differenceInUnits(e, s, zoom.value) * columnWidth.value, 20)
+        return Math.max(differenceInUnits(e, s, effectiveZoom.value) * columnWidth.value, 20)
     }
 
-    return { columnWidth, totalWidth, viewStart, viewEnd, zoom, dateToX, xToDate, widthFromDuration, pxPerDay }
+    return {
+        columnWidth,
+        totalWidth,
+        viewStart,
+        viewEnd,
+        zoom: effectiveZoom,
+        dateToX,
+        xToDate,
+        widthFromDuration,
+        pxPerDay,
+    }
 }

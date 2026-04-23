@@ -10,10 +10,12 @@ defineProps<{
     rows: RoadmapRow[]
     expandedMilestoneIds: Set<string>
     rowHeight: number
+    selectedId: string | null
 }>()
 
 const emit = defineEmits<{
     toggleMilestone: [milestoneId: string]
+    select: [id: string]
 }>()
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,15 +41,21 @@ const EVENT_STATUS_COLORS: Record<string, string> = {
         <div
             v-for="(row, i) in rows"
             :key="i"
-            class="flex items-center gap-2 px-2 border-b border-border/20 shrink-0"
+            class="flex items-center gap-2 px-2 border-b border-border/20 shrink-0 cursor-pointer transition-colors"
+            :class="
+                (row.kind === 'milestone' ? row.milestone.id : row.event.id) === selectedId
+                    ? 'bg-primary/10 border-l-2 border-l-primary -ml-px'
+                    : 'hover:bg-accent/30'
+            "
             :style="{ height: `${rowHeight}px` }"
+            @click="emit('select', row.kind === 'milestone' ? row.milestone.id : row.event.id)"
         >
             <!-- Milestone row -->
             <template v-if="row.kind === 'milestone'">
                 <button
                     type="button"
                     class="flex items-center justify-center size-5 shrink-0 rounded hover:bg-muted transition-colors"
-                    @click="emit('toggleMilestone', row.milestone.id)"
+                    @click.stop="emit('toggleMilestone', row.milestone.id)"
                 >
                     <ChevronRight
                         class="size-3.5 text-muted-foreground transition-transform duration-150"

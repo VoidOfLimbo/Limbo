@@ -14,10 +14,11 @@ const props = defineProps<{
 
 // ── Priority ─────────────────────────────────────────────────────────────────
 const priorityConfig: Record<EventPriority, { label: string; class: string }> = {
-    critical: { label: 'Critical', class: 'bg-destructive/15 text-destructive border-destructive/30 dark:bg-destructive/20' },
-    high:     { label: 'High',     class: 'bg-orange-500/15 text-orange-600 border-orange-500/30 dark:text-orange-400' },
-    medium:   { label: 'Medium',   class: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30 dark:text-yellow-400' },
-    low:      { label: 'Low',      class: 'bg-muted/60 text-muted-foreground border-border' },
+    critical:  { label: 'Critical',  class: 'bg-destructive/15 text-destructive border-destructive/30 dark:bg-destructive/20' },
+    high:      { label: 'High',      class: 'bg-orange-500/15 text-orange-600 border-orange-500/30 dark:text-orange-400' },
+    medium:    { label: 'Medium',    class: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30 dark:text-yellow-400' },
+    low:       { label: 'Low',       class: 'bg-sky-500/15 text-sky-700 border-sky-500/30 dark:text-sky-400' },
+    ignorable: { label: 'Ignorable', class: 'bg-muted/60 text-muted-foreground border-border' },
 }
 
 // ── Status ───────────────────────────────────────────────────────────────────

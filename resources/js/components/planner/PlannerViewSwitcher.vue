@@ -8,8 +8,8 @@ const store = usePlannerStore();
 const views: { id: PlannerViewMode; label: string; icon: typeof LayoutList }[] = [
     { id: 'list', label: 'List', icon: LayoutList },
     { id: 'table', label: 'Table', icon: Table2 },
-    { id: 'board', label: 'Board', icon: LayoutDashboard },
     { id: 'roadmap', label: 'Roadmap', icon: GanttChartSquare },
+    { id: 'board', label: 'Board', icon: LayoutDashboard },
 ];
 </script>
 
@@ -21,7 +21,8 @@ const views: { id: PlannerViewMode; label: string; icon: typeof LayoutList }[] =
                     <TooltipTrigger as-child>
                         <button
                             type="button"
-                            class="flex items-center justify-center rounded px-2 py-1 text-sm transition-colors"
+                            :aria-label="`${view.label} view`"
+                            class="flex items-center justify-center rounded p-1.5 transition-colors cursor-pointer"
                             :class="
                                 store.activeView === view.id
                                     ? 'bg-primary text-primary-foreground'
@@ -30,7 +31,6 @@ const views: { id: PlannerViewMode; label: string; icon: typeof LayoutList }[] =
                             @click="store.setView(view.id)"
                         >
                             <component :is="view.icon" class="size-4" />
-                            <span class="ml-1.5 hidden sm:inline">{{ view.label }}</span>
                         </button>
                     </TooltipTrigger>
                     <TooltipContent>{{ view.label }} view</TooltipContent>

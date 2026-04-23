@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { SlidersHorizontal } from 'lucide-vue-next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import PlannerFilterChip from '@/components/planner/PlannerFilterChip.vue'
 import type { PlannerFilters, PlannerTag } from '@/types/planner'
 
 const props = defineProps<{
@@ -16,77 +17,29 @@ const emit = defineEmits<{
 
 const panelOpen = ref(false)
 
+type Tone = 'zinc' | 'slate' | 'blue' | 'amber' | 'emerald' | 'red' | 'rose' | 'orange' | 'sky' | 'violet' | 'green' | 'gray'
+
 interface FilterOption {
     value: string
     label: string
-    inactive: string
-    active: string
+    tone: Tone
 }
 
 const STATUS_OPTIONS: FilterOption[] = [
-    {
-        value: 'draft',
-        label: 'Draft',
-        inactive: 'border-border text-muted-foreground hover:border-zinc-500/50 hover:text-zinc-400',
-        active: 'bg-zinc-500/15 border-zinc-500/60 text-zinc-300',
-    },
-    {
-        value: 'upcoming',
-        label: 'Upcoming',
-        inactive: 'border-border text-muted-foreground hover:border-blue-500/50 hover:text-blue-400',
-        active: 'bg-blue-500/15 border-blue-500/60 text-blue-300',
-    },
-    {
-        value: 'in_progress',
-        label: 'In Progress',
-        inactive: 'border-border text-muted-foreground hover:border-amber-500/50 hover:text-amber-400',
-        active: 'bg-amber-500/15 border-amber-500/60 text-amber-300',
-    },
-    {
-        value: 'completed',
-        label: 'Completed',
-        inactive: 'border-border text-muted-foreground hover:border-emerald-500/50 hover:text-emerald-400',
-        active: 'bg-emerald-500/15 border-emerald-500/60 text-emerald-300',
-    },
-    {
-        value: 'cancelled',
-        label: 'Cancelled',
-        inactive: 'border-border text-muted-foreground hover:border-red-500/50 hover:text-red-400',
-        active: 'bg-red-500/15 border-red-500/60 text-red-300',
-    },
-    {
-        value: 'skipped',
-        label: 'Skipped',
-        inactive: 'border-border text-muted-foreground hover:border-slate-500/50 hover:text-slate-400',
-        active: 'bg-slate-500/15 border-slate-500/60 text-slate-300',
-    },
+    { value: 'draft',       label: 'Draft',       tone: 'zinc' },
+    { value: 'upcoming',    label: 'Upcoming',    tone: 'blue' },
+    { value: 'in_progress', label: 'In Progress', tone: 'amber' },
+    { value: 'completed',   label: 'Completed',   tone: 'emerald' },
+    { value: 'cancelled',   label: 'Cancelled',   tone: 'red' },
+    { value: 'skipped',     label: 'Skipped',     tone: 'slate' },
 ]
 
 const PRIORITY_OPTIONS: FilterOption[] = [
-    {
-        value: 'critical',
-        label: 'Critical',
-        inactive: 'border-border text-muted-foreground hover:border-rose-500/50 hover:text-rose-400',
-        active: 'bg-rose-500/15 border-rose-500/60 text-rose-300',
-    },
-    {
-        value: 'high',
-        label: 'High',
-        inactive: 'border-border text-muted-foreground hover:border-orange-500/50 hover:text-orange-400',
-        active: 'bg-orange-500/15 border-orange-500/60 text-orange-300',
-    },
-    {
-        value: 'medium',
-        label: 'Medium',
-        inactive: 'border-border text-muted-foreground hover:border-amber-500/50 hover:text-amber-400',
-        active: 'bg-amber-500/15 border-amber-500/60 text-amber-300',
-    },
-    {
-        value: 'low',
-        label: 'Low',
-        inactive: 'border-border text-muted-foreground hover:border-sky-500/50 hover:text-sky-400',
-        active: 'bg-sky-500/15 border-sky-500/60 text-sky-300',
-    },
+    { value: 'critical',  label: 'Critical',  tone: 'rose' },
+    { value: 'high',      label: 'High',      tone: 'orange' },
+    { value: 'medium',    label: 'Medium',    tone: 'amber' },
+    { value: 'low',       label: 'Low',       tone: 'sky' },
+    { value: 'ignorable', label: 'Ignorable', tone: 'gray' },
 ]
 
 // ── State ───────────────────────────────────────────────────────────────────
@@ -181,7 +134,7 @@ const activeChips = computed<ActiveChip[]>(() => {
             <Popover v-model:open="panelOpen">
                 <PopoverTrigger as-child>
                     <button
-                        class="flex items-center gap-1.5 text-xs font-medium transition-colors focus-visible:outline-none shrink-0"
+                        class="flex items-center gap-1.5 text-xs font-medium transition-colors focus-visible:outline-none shrink-0 cursor-pointer"
                         :class="panelOpen || activeChips.length ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'"
                     >
                         <SlidersHorizontal class="size-3.5" />
@@ -195,124 +148,92 @@ const activeChips = computed<ActiveChip[]>(() => {
                     </button>
                 </PopoverTrigger>
                 <PopoverContent align="start" :side-offset="8" class="w-auto max-w-[min(95vw,680px)] p-4">
-                    <div class="flex flex-wrap items-start gap-x-6 gap-y-4">
+                    <div class="flex flex-col gap-4">
                         <!-- Status -->
-                        <div class="shrink-0">
-                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Status</p>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button
+                        <div class="flex items-start gap-3">
+                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-16 pt-1 shrink-0">Status</p>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <PlannerFilterChip
                                     v-for="opt in STATUS_OPTIONS"
                                     :key="opt.value"
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full border text-[11px] font-medium transition-colors"
-                                    :class="selectedStatuses.includes(opt.value) ? opt.active : opt.inactive"
+                                    :label="opt.label"
+                                    :tone="opt.tone"
+                                    :active="selectedStatuses.includes(opt.value)"
                                     @click="toggleStatus(opt.value)"
-                                >
-                                    {{ opt.label }}
-                                </button>
+                                />
                             </div>
                         </div>
-
-                        <!-- Separator -->
-                        <div class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
 
                         <!-- Priority -->
-                        <div class="shrink-0">
-                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Priority</p>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button
+                        <div class="flex items-start gap-3">
+                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-16 pt-1 shrink-0">Priority</p>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <PlannerFilterChip
                                     v-for="opt in PRIORITY_OPTIONS"
                                     :key="opt.value"
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full border text-[11px] font-medium transition-colors"
-                                    :class="selectedPriorities.includes(opt.value) ? opt.active : opt.inactive"
+                                    :label="opt.label"
+                                    :tone="opt.tone"
+                                    :active="selectedPriorities.includes(opt.value)"
                                     @click="togglePriority(opt.value)"
-                                >
-                                    {{ opt.label }}
-                                </button>
+                                />
                             </div>
                         </div>
-
-                        <!-- Separator -->
-                        <div v-if="tags.length" class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
 
                         <!-- Tags -->
-                        <div v-if="tags.length" class="shrink-0 max-w-90">
-                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Tags</p>
-                            <div class="flex flex-wrap gap-1.5">
-                                <button
+                        <div v-if="tags.length" class="flex items-start gap-3">
+                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-16 pt-1 shrink-0">Tags</p>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <PlannerFilterChip
                                     v-for="tag in tags"
                                     :key="tag.id"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-medium transition-colors"
-                                    :class="
-                                        selectedTags.includes(tag.id)
-                                            ? 'border-transparent text-white'
-                                            : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                                    "
-                                    :style="selectedTags.includes(tag.id) && tag.color ? { backgroundColor: tag.color, borderColor: tag.color } : {}"
+                                    :label="tag.name"
+                                    :color="tag.color"
+                                    :active="selectedTags.includes(tag.id)"
                                     @click="toggleTag(tag.id)"
-                                >
-                                    <span
-                                        v-if="!selectedTags.includes(tag.id) && tag.color"
-                                        class="size-1.5 rounded-full shrink-0"
-                                        :style="{ backgroundColor: tag.color }"
-                                    />
-                                    {{ tag.name }}
-                                </button>
+                                />
                             </div>
                         </div>
 
-                        <!-- Separator -->
-                        <div class="hidden sm:block self-stretch border-l border-border/40 shrink-0" />
-
-                        <!-- Date range + Snoozed -->
-                        <div class="shrink-0 flex flex-col gap-2.5">
-                            <div>
-                                <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Date range</p>
-                                <div class="flex items-center gap-1.5 flex-wrap">
-                                    <input
-                                        v-model="dateFrom"
-                                        type="date"
-                                        class="h-7 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                    />
-                                    <span class="text-xs text-muted-foreground">→</span>
-                                    <input
-                                        v-model="dateTo"
-                                        type="date"
-                                        class="h-7 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                                    />
-                                </div>
+                        <!-- Date range + Snoozed toggle -->
+                        <div class="flex items-start gap-3 flex-wrap">
+                            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground w-16 pt-1.5 shrink-0">Date</p>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <input
+                                    v-model="dateFrom"
+                                    type="date"
+                                    class="h-7 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer dark:scheme-dark"
+                                />
+                                <span class="text-xs text-muted-foreground">→</span>
+                                <input
+                                    v-model="dateTo"
+                                    type="date"
+                                    class="h-7 rounded-md border border-border bg-background px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer dark:scheme-dark"
+                                />
                             </div>
-
-                            <!-- Snoozed toggle -->
                             <button
-                                class="flex items-center gap-2 text-[11px] font-medium transition-colors w-fit"
+                                role="switch"
+                                :aria-checked="showSnoozed"
+                                class="ml-auto inline-flex items-center gap-2 text-[11px] font-medium transition-colors cursor-pointer"
                                 :class="showSnoozed ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'"
                                 @click="showSnoozed = !showSnoozed"
                             >
                                 <span
-                                    class="inline-flex size-4 items-center justify-center rounded border transition-colors shrink-0"
-                                    :class="showSnoozed ? 'bg-primary border-primary' : 'border-border'"
+                                    class="relative inline-flex h-4 w-7 items-center rounded-full border transition-colors shrink-0"
+                                    :class="showSnoozed ? 'bg-primary border-primary' : 'bg-muted border-border'"
                                 >
-                                    <svg
-                                        v-if="showSnoozed"
-                                        viewBox="0 0 10 10"
-                                        class="size-2.5 text-primary-foreground"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-                                        <path d="M1.5 5l2.5 2.5 4.5-4" />
-                                    </svg>
+                                    <span
+                                        class="inline-block size-3 rounded-full bg-background shadow-sm transition-transform"
+                                        :class="showSnoozed ? 'translate-x-3.5' : 'translate-x-0.5'"
+                                    />
                                 </span>
                                 Include snoozed
                             </button>
                         </div>
 
                         <!-- Clear all (bottom-right of popover) -->
-                        <div v-if="activeChips.length" class="w-full flex justify-end border-t border-border/40 pt-3 mt-1">
+                        <div v-if="activeChips.length" class="flex justify-end border-t border-border/40 pt-3 mt-1">
                             <button
-                                class="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors"
+                                class="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors cursor-pointer"
                                 @click="handleClear"
                             >
                                 Clear all filters
