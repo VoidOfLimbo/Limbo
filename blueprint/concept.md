@@ -1,8 +1,15 @@
 /** Copilot ignore this file
   * This is a raw concept file where I am jotting down my thoughts before confirming on it.
   * This is so that I myself have point of reference for the decisions I have made.
+  * We will have a multi project architecture,
  */
 
+User access the webapp and they see a dashboard page. The dashboard page gives hilight for the day in general. It shows the expense history for the rolling 7 days vs the average for that day or (togglable) rolling 30 days vs the average for that date. (oh boy, leap year is going to be fun). Dashboard will also show what is the most popular item that was purchased.
+
+
+
+The calender will be supported in 2 formats, AD and BS. We beed to build our own calendar engine. read https://github.com/dantwoashim/Project_Parva for inspiration. The calendar will be one of the core features of the app, and a lot of other features will be dependent on it.
+We will need 
 
 so i was thinking that in a calender users can plan anything
 - milestone: This is simple high level planning that does not go into day to day details. For example launching a app. There is two ways:
