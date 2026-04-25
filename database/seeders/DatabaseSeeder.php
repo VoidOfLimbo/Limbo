@@ -16,8 +16,5 @@ class DatabaseSeeder extends Seeder
                 'email' => 'bipin.paneru.9@gmail.com',
             ]),
         );
-
-        $this->call(PlannerSeeder::class);
-        $this->call(PlannerStressSeeder::class);
     }
 }

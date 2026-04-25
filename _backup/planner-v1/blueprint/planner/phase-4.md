@@ -184,120 +184,17 @@ Relationship: `PlannerField hasMany PlannerIteration` → `iterations()` ordered
 - [x] All milestones pre-expanded on open
 - [x] `activeMilestoneId` watcher clears stale events on milestone navigation
 
-### Deferred
-- [ ] Dependency arrow SVG overlay
-- [ ] Iteration bands background highlighting
-- [ ] Row virtualization with `RecycleScroller` (only if 500+ rows causes perf issues)
-
+### Deferred / Outstanding
+- [ ] **Dependency arrow SVG overlay** — render `EventDependency` (Blocking / Informational) as curved SVG lines between bars; toggleable from `PlannerRoadmapToolbar` (button already present, currently no-op).
+- [ ] **Iteration bands** — render background highlighting on the timeline grid for `planner_iterations` date ranges (table + model already exist, no UI yet).
+- [ ] **Iteration custom field UI** — surface `planner_iterations` in `PlannerFieldManager` (create / edit / list iterations for an `iteration`-type field).
+- [ ] **Row virtualization** with `RecycleScroller` (only if 500+ rows causes perf issues; currently rendering all rows).
 
 ---
 
 ## Rendering Strategy
 
-Start with **HTML divs + CSS transforms** for bars. Milestone rows are virtualized with `RecycleScroller`. If performance degrades at 500+ visible rows, migrate the bar layer to Canvas while keeping the row sidebar in HTML.
+Bars: HTML divs + CSS transforms positioned via `dateToX()` / `widthFromDuration()`. No virtualization yet — revisit only if 500+ visible rows lags. Keep sidebar in HTML even if we ever migrate the bar layer to Canvas.
 
-→ Full rendering decisions: [`blueprint/planner-views/roadmap-view.md`](../planner-views/roadmap-view.md)
+→ Full rendering reference: [`blueprint/planner-views/roadmap-view.md`](../planner-views/roadmap-view.md)
 
----
-
-## Coordinate System
-
-All bar positions computed by a `useRoadmapLayout` composable:
-
-```typescript
-{
-    columnWidth: number      // px per unit (day/week/month/quarter)
-    totalWidth: number       // total timeline width in px
-    viewStart: Date          // leftmost visible date
-    viewEnd: Date            // rightmost visible date
-    dateToX: (date: Date) => number
-    xToDate: (x: number) => Date
-    widthFromDuration: (start: Date, end: Date) => number
-}
-```
-
-Switching zoom re-calculates all bar positions — no data re-fetch needed.
-
----
-
-## New Database Requirements
-
-One new table introduced in Phase 4:
-
-### `planner_iterations` (via `iteration` custom field type)
-Iteration is a custom field type (`type = 'iteration'`) added in Phase 3. Phase 4 adds the backing `planner_iterations` table that stores the actual iteration date ranges:
-
-```php
-$table->ulid('id')->primary();
-$table->foreignUlid('field_id')->constrained('planner_fields')->cascadeOnDelete();
-$table->string('title');           // e.g. "Sprint 1", "Q2 2026"
-$table->date('start_date');
-$table->date('end_date');
-$table->unsignedSmallInteger('position')->default(0);
-$table->timestamps();
-```
-
----
-
-## Component Structure
-
-```
-PlannerRoadmapView
-├── PlannerRoadmapToolbar
-│   ├── ZoomControl          day | week | month | quarter
-│   ├── TodayButton          → scroll to today
-│   └── ShowDependencies     toggle dependency arrows
-│
-└── PlannerRoadmapCanvas     [flex row, fills remaining height]
-    ├── PlannerRoadmapSidebar  [fixed-width ~260px]
-    │   └── RecycleScroller
-    │       └── PlannerRoadmapSidebarRow × N
-    │           ├── Expand toggle (milestones)
-    │           ├── Item title
-    │           └── Progress bar (milestones)
-    │
-    └── PlannerRoadmapTimeline [flex-1, overflow-x scroll]
-        ├── PlannerTimelineHeader (sticky top)
-        │   ├── Major labels  (months, quarters)
-        │   └── Minor labels  (weeks, days)
-        ├── PlannerTimelineGrid (position: absolute)
-        │   ├── Today vertical line
-        │   ├── Weekend shading (day/week zoom)
-        │   └── Iteration bands
-        └── PlannerTimelineRows (scroll-synced with sidebar)
-            ├── PlannerTimelineBar × N  [draggable + resizable]
-            └── SVG overlay layer       [dependency arrows]
-```
-
----
-
-## Checklist
-
-### New packages / dependencies
-- [ ] `vue-virtual-scroller` — row virtualization (shared with Table view if added)
-- [ ] No new npm packages expected; uses `@vueuse/core` `useDraggable` for bar drag/resize
-
-### Database
-- [ ] Migration: `planner_iterations`
-- [ ] Model: `PlannerIteration`
-- [ ] Relationship: `PlannerField hasMany PlannerIteration`
-
-### Backend
-- [ ] GraphQL type + queries for iterations
-- [ ] Update event/milestone update endpoints to handle `start_at`/`end_at` changes from drag
-
-### Frontend
-- [ ] `useRoadmapLayout` composable (zoom, dateToX, xToDate, widthFromDuration)
-- [ ] `PlannerRoadmapView` — root component
-- [ ] `PlannerRoadmapToolbar` — zoom control, today button, show dependencies toggle
-- [ ] `PlannerRoadmapCanvas` — flex row container
-- [ ] `PlannerRoadmapSidebar` — virtualized left panel
-- [ ] `PlannerRoadmapSidebarRow` — expandable milestone / event row
-- [ ] `PlannerRoadmapTimeline` — horizontally scrollable right panel
-- [ ] `PlannerTimelineHeader` — major/minor date labels (sticky)
-- [ ] `PlannerTimelineGrid` — today line, weekend shading, iteration bands
-- [ ] `PlannerTimelineRows` — virtualized row layer (scroll-synced with sidebar)
-- [ ] `PlannerTimelineBar` — draggable + left/right resizable bar
-- [ ] Dependency arrow SVG overlay
-- [ ] Add `roadmap` to `PlannerViewSwitcher`
-- [ ] Scroll sync between sidebar and timeline panels

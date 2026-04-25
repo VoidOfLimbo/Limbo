@@ -40,29 +40,4 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(SocialAccount::class);
     }
-
-    public function milestones(): HasMany
-    {
-        return $this->hasMany(Milestone::class);
-    }
-
-    public function events(): HasMany
-    {
-        return $this->hasMany(Event::class);
-    }
-
-    public function tags(): HasMany
-    {
-        return $this->hasMany(Tag::class);
-    }
-
-    public function plannerFields(): HasMany
-    {
-        return $this->hasMany(PlannerField::class);
-    }
-
-    public function plannerViews(): HasMany
-    {
-        return $this->hasMany(PlannerView::class);
-    }
 }
