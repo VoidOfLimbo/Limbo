@@ -13,5 +13,5 @@ defineProps<Props>();
 </script>
 
 <template>
-    <img src="/logo.png" alt="Limbo" :class="className" class="object-contain" v-bind="$attrs" />
+    <img src="/logo.png" alt="VoidOfLimbo" :class="className" class="object-contain" v-bind="$attrs" />
 </template>

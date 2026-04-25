@@ -225,7 +225,7 @@ import { home } from '@/routes';
                     <h2 class="mb-4 text-xl font-semibold tracking-tight">8. Children's Privacy</h2>
                     <div class="space-y-3 text-sm leading-7 text-muted-foreground">
                         <p>
-                            Limbo is not directed at children under 13 years of age. We do not knowingly collect
+                            VoidOfLimbo is not directed at children under 13 years of age. We do not knowingly collect
                             personal information from children. If you believe a child has provided us with personal
                             data, please contact us and we will delete it promptly.
                         </p>
@@ -238,7 +238,7 @@ import { home } from '@/routes';
                         <p>
                             We may update this Privacy Policy from time to time. When we do, we will revise the "Last
                             updated" date at the top of this page. For significant changes, we may notify you via
-                            email or an in-app notice. Continuing to use Limbo after changes take effect constitutes
+                            email or an in-app notice. Continuing to use VoidOfLimbo after changes take effect constitutes
                             your acceptance of the updated policy.
                         </p>
                     </div>
@@ -252,8 +252,8 @@ import { home } from '@/routes';
                             <p class="font-medium text-foreground">VoidOfLimbo</p>
                             <p class="mt-1">
                                 Email:
-                                <a href="mailto:privacy@limbo.app" class="text-primary underline-offset-4 hover:underline">
-                                    privacy@limbo.app
+                                <a href="mailto:privacy@voidoflimbo.app" class="text-primary underline-offset-4 hover:underline">
+                                    privacy@voidoflimbo.app
                                 </a>
                             </p>
                         </div>
@@ -263,7 +263,7 @@ import { home } from '@/routes';
 
             <!-- Footer note -->
             <div class="mt-20 border-t border-border/40 pt-8 text-center text-xs text-muted-foreground">
-                <p>© {{ new Date().getFullYear() }} Limbo by VoidOfLimbo. All rights reserved.</p>
+                <p>© {{ new Date().getFullYear() }} VoidOfLimbo. All rights reserved.</p>
                 <p class="mt-1">
                     <Link :href="home()" class="underline-offset-4 hover:underline">Return to home</Link>
                 </p>

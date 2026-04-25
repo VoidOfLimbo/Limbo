@@ -1,6 +1,6 @@
 # Inspiration
 
-A living reference of sites, libraries, and designs that inspire the look, feel, and UX of Limbo. Updated as we discover new references.
+A living reference of sites, libraries, and designs that inspire the look, feel, and UX of VoidOfLimbo. Updated as we discover new references.
 
 ---
 
