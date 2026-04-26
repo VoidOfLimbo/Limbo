@@ -14,11 +14,19 @@ VoidOfLimbo is a unified personal life-management platform anchored by a native 
 
 **Single Laravel application** with high-cohesion features developed as **local Composer packages** for reusability. Packages are maintained locally and may be published to GitHub / Packagist in the future as standalone libraries.
 
+**Package philosophy:**
+- Each package follows the **Laravel standard package structure** (service providers, config publishing, migrations, etc.)
+- Every package ships **both** a PHP backend (logic, models, services) and a **Vue component library** (UI building blocks)
+- The consuming app can extend PHP logic and override/customise UI components — the package provides the core, the app can diverge where needed
+- Vue components are designed as **composable lego blocks**: some are plug-and-play (drop in and it works), others are low-level primitives for building custom layouts
+- Package boundaries are grouped by domain affinity — similar modules live in the same package; a new package is created only when a module is clearly distinct enough to warrant it
+- Scope of each package is defined and refined as development progresses — not fully pre-specified upfront
+
 **Known packages:**
 
-| Package | Name | Purpose |
+| Package | Name | Scope |
 |---|---|---|
-| Calendar engine | `Celestine` (a Nakshatra Kālan) | BS/AD calendar, date conversion, recurring pattern engine |
+| Calendar engine + UI | `Celestine` (a Nakshatra Kālan) | BS/AD calendar logic, date conversion, recurring pattern engine, calendar grid Vue components |
 
 ---
 
@@ -39,7 +47,9 @@ VoidOfLimbo is a unified personal life-management platform anchored by a native 
 
 ## Package: Celestine (a Nakshatra Kālan)
 
-The central dependency of the entire application. All planning, scheduling, financial, and display features reference this package.
+The central dependency of the entire application. All planning, scheduling, financial, and display features reference this package. Follows Laravel standard package structure with a service provider, publishable config, publishable migrations, and a Vue component library.
+
+### PHP Backend
 
 **Phase 1 scope:**
 - **BS (Bikram Sambat)** — primary calendar system
@@ -52,11 +62,33 @@ The central dependency of the entire application. All planning, scheduling, fina
 - Bidirectional date conversion BS ↔ AD
 - BS-aware month length tables (irregular lengths, no fixed formula)
 - Recurring pattern engine: daily, weekly, monthly (nth weekday of month, last working day, etc.), custom — shared by Schedule, Subscription, Event, Reminder
-- Calendar views: Daily · Weekly · Monthly · Yearly
-- Locale-aware formatting: Nepali numerals, month and day names in Nepali and English
+- Locale-aware date formatting: Nepali numerals, month and day names in Nepali and English
 - Holiday / leave integration hooks (consumed by the Schedule module)
+- Extendable — consuming app can extend core classes and bind overrides via the service provider
 
 **Leap year / rolling average strategy:** Rolling 7-day and 30-day financial averages will normalise using a trailing 365-day same-day-of-week window rather than fixed-period averages. This cleanly handles BS month-length irregularities and AD leap years while producing statistically meaningful comparisons.
+
+### Vue Component Library
+
+The package provides **two tiers of Vue components:**
+
+| Tier | Description | Examples |
+|---|---|---|
+| **Primitives** | Low-level, unstyled building blocks. Full control given to the consuming app. | `<CalendarCell>`, `<DayLabel>`, `<MonthGrid>` |
+| **Composed** | Plug-and-play assembled views with sensible defaults. Customisable via props and slots. | `<CalendarDay>`, `<CalendarWeek>`, `<CalendarMonth>`, `<CalendarYear>` |
+
+**Component design principles:**
+- Slot-heavy: every meaningful section is a named slot so the consuming app can inject custom content
+- Prop-driven configuration: entity rendering (colours, icons, filtering) controlled via props
+- Emit events for all interactions (day-click, event-click, range-select) — the app decides what to do
+- Styles are scoped and themeable; consuming app can publish and override CSS variables
+
+**Calendar views provided:**
+- Daily · Weekly · Monthly · Yearly grid views
+- Mini calendar (for date pickers and sidebars)
+
+**Layouts provided:**
+Where it makes sense the package also ships full **page layouts** for each calendar view (the assembled page with header, navigation, sidebars, and the calendar grid wired together). These are higher-level than composed components — an opinionated default that works out of the box. The consuming app can use them as-is, override via slots, or discard them entirely and build its own layout from composed components and primitives.
 
 ---
 
@@ -150,7 +182,14 @@ The milestone records which option was taken and when (full audit log).
 | WSJF (Weighted Shortest Job First) | Phase 2 |
 | ICE (Impact/Confidence/Ease) | Phase 2 |
 
-Dependency visualisation: structured list view (shows blockers/blocked-by). Gantt-style graph is a future consideration.
+**Dependency visualisation:**
+
+| Phase | View |
+|---|---|
+| Phase 1 | Structured list within the Task/Milestone detail panel — shows "blocked by" and "blocking" per task |
+| Phase 2 | Dedicated **Project View** (separate from the calendar grid) — Gantt-style chart with timeline bars and dependency arrows, accessible from a Milestone or Task. Shows the critical path, parallel tracks, and cascading impact of delays. |
+
+> The Gantt/Project View is **not** a calendar grid mode. It is a standalone view opened from the context of a specific Milestone or Task.
 
 ### 3.3 Schedule
 
@@ -207,7 +246,9 @@ Unstructured idea capture — the "someday / maybe" list.
 
 ---
 
-## Module 4 — Calendar View (Celestine UI)
+## Module 4 — Calendar View
+
+**Provided by the Celestine package** (composed Vue components consumed by the main app). The main app passes entity data and configuration via props; interaction events are handled by the app layer.
 
 All planner entities are surfaced on the calendar with distinct visual treatment (colour coding and icons per entity type, filterable by type/category).
 
@@ -250,7 +291,7 @@ Items to be defined before implementation of the affected modules.
 |---|---|---|---|
 | 1 | Dashboard "purchase habit" — specific insights to surface | Dashboard | ✅ Resolved — see Module 1 |
 | 2 | Bucket list sub-items — support nested items? ordering/prioritisation? | Bucket List | ✅ Resolved — see §3.7 |
-| 3 | Dependency graph visualisation (Gantt) — phase 2 scope confirmation | Task | Open |
+| 3 | Dependency graph / Project View (Gantt) | Task / Milestone | ✅ Resolved — Phase 2 dedicated view, not a calendar mode. See §3.2 |
 | 4 | OCR receipt extraction solution | Financial — Phase 2 | Open |
 | 5 | User tier feature gating strategy | All modules | Open — define before public launch |
 | 6 | Newari (Nepal Sambat) calendar scope and timeline | Celestine package | Open — future phase |
