@@ -47,10 +47,10 @@ A dedicated Python application runs alongside the Laravel app to handle AI/ML ta
 | Database | TimescaleDB (PostgreSQL extension) | Hypertables for financial + event time-series data |
 | Auth | Laravel Fortify + Socialite | Microsoft OAuth already integrated |
 | Notifications (dev) | Mailpit via Laravel Sail | |
-| Notifications (prod) | In-app bell + Email | SMS / webhooks (Discord, Cliq) planned for future |
+| Notifications (prod) | In-app bell + Email + PWA push | SMS / webhooks (Discord, Cliq) planned for future |
 | Testing | Pest | |
 | Mobile | PWA first | Separate Android app after web app is feature-complete |
-| AI service | Python (sidecar app) | Receipt processing and future AI/ML tasks. Communicates with the Laravel app. |
+| AI service | Python (side service) | Receipt processing and future AI/ML tasks. Communicates with the Laravel app. |
 | Localisation | English (Phase 1) | Nepali / Devanagari UI in Phase 2 |
 | Search | Global (cross-module) + local (module-scoped) | Global search from main nav; local search within each module |
 
@@ -69,7 +69,7 @@ The calendar is the central dependency of the entire application. All planning, 
 - **AD (Gregorian)** — secondary, full interoperability with BS
 
 **Future phase:**
-- **Newari (Nepal Sambat)** — display and conversion
+- **Newari (Nepal Sambat)** — display only (Phase 2). Full conversion engine and support as a primary calendar system is a longer-term possibility.
 
 **Capabilities:**
 - Bidirectional date conversion BS ↔ AD
@@ -115,7 +115,7 @@ Per-user account settings that affect behaviour across all modules:
 | Timezone | Auto-detected from browser | User can override. All datetimes stored in UTC internally. |
 | Language / locale | English | Nepali (Devanagari) in Phase 2. |
 | Currency | Per financial account | Each account has its own currency. Set when creating the account. |
-| Notification advance notice | TBD global default | User sets a global default for subscription reminders; does not apply to standalone Reminders (those fire at their exact datetime). |
+| Notification advance notice | 1 day (system default) | User can change the global default and set multiple advance-notice alerts per subscription (e.g. 7 days and 1 day before). Does not apply to standalone Reminders (those fire at their exact datetime). |
 | Region / country | User-defined | Pre-loads confirmed public holidays for the user's region. User can edit, add, or correct holidays at any time (holidays can change after initial announcement). |
 
 ---
@@ -146,18 +146,25 @@ Drill-down from every widget navigates to the corresponding module.
 | Method | Phase |
 |---|---|
 | Manual entry (amount, category, merchant, date, notes) | Phase 1 |
-| Bank transaction import — CSV / OFX upload | Phase 1 |
-| Receipt upload + AI extraction (Python service) | Phase 1 |
+| Bank transaction import — CSV / OFX upload (auto-detected columns + user review/correction step before committing) | Phase 1 |
+| Receipt upload + AI extraction (Python side service) | Phase 1 |
 | Bank Open Banking API integration | Future |
 | Retailer loyalty API (Lidl, Morrisons) | Nice-to-have / Future |
 
+**Transaction split:** A single transaction can be split across multiple categories, each with its own amount. The sum of all splits must equal the transaction total. Used when a single purchase spans multiple spending categories (e.g. a supermarket shop: £30 Groceries + £10 Household + £5 Clothing).
+
 ### 2.2 Transaction Types
 - **Expense** — purchase, bill, fee
-- **Income** — salary, freelance, transfer in
+- **Income** — salary, freelance, other non-transfer income
 - **Transfer** — between user's own accounts. Same-currency transfers record amount only. Cross-currency transfers require the user to enter the exchange rate at the time of the transfer (same mechanism as the secondary-currency field on regular transactions); recorded as a paired debit + credit.
 
 ### 2.3 Currency Model
 Currency is set **per financial account** (each bank account, savings account, cash wallet, or credit card has its own currency). This allows a user to hold a GBP bank account alongside an NPR savings account. Transactions inherit the currency of their account. The optional secondary-currency field on a transaction stores the **conversion rate locked to the transaction's datetime** (historical rate, not live).
+
+**Cross-account aggregation** (Dashboard totals, Analytics charts, Net worth):
+- Same-currency accounts: summed directly in that currency
+- Different-currency accounts: each transaction is converted using its stored conversion rate. The UI displays a caveat notification: *"This figure includes converted amounts based on user-provided exchange rates and may not reflect exact current values."*
+- Users are not required to provide conversion rates; untranslated amounts are excluded from cross-currency aggregations with a clear indicator that some accounts are excluded
 
 ### 2.4 Account Types
 
@@ -174,11 +181,12 @@ All account types are user-labelled. The type field determines how the balance i
 
 ### 2.5 File Attachments
 
-- **Phase 1:** Receipt image/document upload on transactions. The file is sent to the **Python AI service** for parsing (merchant, date, line items, total extracted automatically). User can review and correct the extracted data before saving.
+- **Phase 1:** Receipt image/document upload on transactions. The file is sent to the **Python AI side service** for parsing (merchant, date, line items, total extracted automatically). User can review and correct the extracted data before saving.
 - **Phase 2:** File attachments on all major entities (tasks, events, milestones, etc.)
 
 ### 2.6 Data Model Concepts
 - `transactions` — TimescaleDB hypertable, partitioned by datetime
+- `transaction_splits` — individual category line items for split transactions; each row has amount + category reference; all splits for a transaction sum to the transaction total
 - `expense_categories` — hierarchical expense category tree (e.g. Food → Groceries → Lidl)
 - `income_categories` — separate hierarchical income category tree (e.g. Employment → Salary)
 - `merchants` — normalised payee/merchant records
@@ -195,6 +203,15 @@ All planner entities appear on the Celestine calendar. Entities can be freely cr
 ### 3.1 Milestone
 
 High-level goal container. Not day-to-day detail — the "what" not the "how."
+
+**Fields:** title, description, sub-type, start date (required for all sub-types), end date / no-later-than date, deadline type (hard / soft), status, tags
+
+**Status lifecycle:** Draft (start date not yet set) · Active (start date set) · At Risk (auto-flagged: any task linked to this milestone is scheduled beyond its end date, **or** any linked task is overdue — both conditions independently trigger At Risk) · Completed · Abandoned · Disabled (auto-set for Flexible/Bounded when the no-later-than date passes)
+
+**Calendar presence by sub-type:**
+- **Fixed** — shown as a span/bar across the start–end date range on the calendar grid.
+- **Flexible / Continuous** — not shown on the calendar grid; appears in a dedicated **Running Milestones** panel (milestones past their start date with no end date). This panel is accessible from the Planner and the Dashboard.
+- **Flexible / Bounded** — shown on the calendar from start date until the no-later-than date. Auto-disabled and removed from the calendar when the no-later-than date passes.
 
 | Sub-type | Behaviour |
 |---|---|
@@ -215,10 +232,19 @@ The milestone records which option was taken and when (full audit log).
 
 - Belongs to a **milestone** or is **standalone**
 - Fields: title, description, start datetime, end datetime, status
-- **Status:** Unscheduled (no dates) · Scheduled · In Progress (start passed, end not reached — auto-determined) · Done (manually marked by user)
-- **Relationships:** subtask-of · parallel-with · dependent-on (blocking)
-- A task can have any number of subtasks; subtasks follow the same rules as tasks
+- **Status:** User-definable. Four defaults provided: Unscheduled (no dates) · Scheduled · In Progress (start passed, end not reached — auto-determined) · Done (manually marked by user). Custom statuses can be added (useful for Kanban-style workflows).
+- **Relationships:**
+  - **subtask-of:** task is a child of another task. A task can have any number of subtasks; subtasks follow the same rules as tasks.
+  - **parallel-with:** tasks are independent of each other (not blocked by one another) but together form a prerequisite group — a subsequent task that depends on the group cannot start until **all** members are Done. Parallel tasks do not need to overlap in time (e.g. task A on Monday, B on Tuesday, C on Wednesday; their shared successor D starts on Thursday once A, B, and C are all Done).
+  - **dependent-on (blocking):** this task cannot start until the specified blocking task is Done (standard serial dependency).
+- **Subtask completion prompt:** when marking a parent task as Done while it has incomplete subtasks, a modal prompts: *"You have N incomplete subtasks — Mark all as Done / Keep as-is / Cancel."*
 - Without start + end assigned → **Unscheduled** (not shown on calendar; lives in the Task Board unscheduled column)
+
+**Priority storage:**
+- Each task has a **generic priority score** (0–100). Five default levels: Urgent (10) · High (30) · Medium (50) · Low (70) · Ignorable (100). Users can create custom levels or rename existing ones (any score 0–100).
+- Each priority framework (Eisenhower, MoSCoW, Value vs Effort, etc.) stores the task's **placement per framework** independently (e.g. which MoSCoW bucket, which Eisenhower quadrant, value score + effort score). Placement is set by drag-and-drop within each view.
+- When a user places a task in a framework, the system suggests updating the generic priority score to match. The user can accept, modify, or ignore the suggestion.
+- Correcting placement in one framework does not automatically change placement in another framework.
 
 **Priority classification views:**
 
@@ -244,9 +270,11 @@ The milestone records which option was taken and when (full audit log).
 
 Recurring **behavioural and time-based patterns**. Not financial.
 
-- Fields: title, start time, end time, recurrence pattern (days of week, exceptions), skip-holiday flag
+- Fields: title, start time, end time, recurrence pattern (days of week), exceptions list, skip-holiday flag, optional end date
+- **End condition:** A Schedule runs indefinitely by default. User can set an optional end date or manually stop it at any time. Stopped schedules retain their history.
+- **Exceptions list:** specific dates or specific recurring days (e.g. every Friday) can have a different start/end time overriding the default. This handles per-day-variant times such as a Friday early finish.
 - **Skip conditions:** public holidays, leave days, custom exceptions
-- Edit scope on modification: **this occurrence only** or **this and all future occurrences**
+- Edit scope on modification: **this occurrence only** or **this and all future occurrences**. Past occurrences are immutable. A missed occurrence can be rescheduled — the reschedule applies to that occurrence only, or to that occurrence and all future ones.
 
 **Leave days** are a calendar-level attribute, not a separate module. The Celestine calendar ships with a default leave/holiday layer (populated from the user's region holiday calendar). Users can modify it freely. Leave days are **informational** — they do not hard-block anything. Each schedule, task, milestone, or subscription can independently choose whether to treat leave/holidays as skip days or proceed normally. The choice is per-entity, not global.
 
@@ -258,13 +286,16 @@ Recurring **behavioural and time-based patterns**. Not financial.
 
 Recurring **financial** events (expenses or income).
 
-- Fields: amount, category, merchant/payer, account, frequency, start date, optional end date
+- Fields: amount, currency, category, merchant/payer, account, frequency, start date, optional end date
+- **Subscription currency:** Each subscription has its own currency. If it matches the linked account's currency, amounts are recorded directly. If they differ, the user provides a conversion rate at the time of entry; both the original amount (in the subscription's currency) and the converted amount (in the account's currency) are stored. The converted amount is used in all calculations; the original is retained for reference.
+- **Change scope:** modifying a subscription's amount, frequency, or currency applies from the next occurrence forward. Past payment records are immutable.
+- Category uses the **expense_categories** tree for outgoing subscriptions and the **income_categories** tree for incoming subscriptions (consistent with §2.6)
 - Complex frequency rules supported: "first working day of month", "last Friday of month"
 - Working day calculation uses the user's **region holiday calendar** (pre-loaded confirmed holidays + user-customisable; see User Settings)
 - **Ending a subscription:** user can either (a) set an end date in advance — auto-stops after that date, or (b) manually deactivate it at any time. Either way, history is retained.
-- Behaviour: sends a **reminder** when due — user manually logs the transaction. Does not auto-create transactions.
-- Notification timing: global default set in user settings; overridable per subscription
-- Displays payment history (manually logged entries linked to this subscription)
+- **Notifications:** The subscription has a built-in **advance-notice system notification** that fires based on the global default (1 day) or per-subscription override. A subscription can have **multiple advance-notice alerts** (e.g. 7 days and 1 day before). This is separate from the Reminder entity. Users can additionally create and attach an optional Reminder entity to a subscription for custom timing or extra context.
+- Behaviour: when the notification fires, the user manually logs the transaction. Does not auto-create transactions.
+- Displays payment history (manually logged entries linked to this subscription). The link between a logged transaction and a subscription is set **manually** by the user — transactions are not auto-linked.
 
 ### 3.5 Reminder
 
@@ -273,13 +304,14 @@ General-purpose alert, the simplest planner entity.
 - Fields: title, firing time (absolute datetime **or** relative offset from a linked entity, e.g. '30 minutes before')
 - Can be linked to any other entity (event, task, subscription, milestone)
 - When **standalone**: datetime is the exact firing time
-- When **attached to an entity**: user can choose absolute datetime OR relative offset (X minutes / hours / days before the linked entity's start time)
-- The global advance-notice setting does not apply to standalone Reminders
+- When **attached to an entity**: user can choose absolute datetime OR relative offset (X minutes / hours / days before the linked entity's start time or due date)
+- The global advance-notice setting (default 1 day, user-configurable) does not apply to standalone Reminders
 - Delivery: in-app notification bell + email
 
 ### 3.6 Event
 
-- Fields: title, description, start datetime, end datetime (single or multi-day)
+- Fields: title, description, start datetime, end datetime (single or multi-day), recurrence pattern (optional)
+- **Recurrence:** Events can recur using the same recurring pattern engine as Schedule and Subscription (e.g. annual birthday, weekly team meeting). Edit scope on modification: this occurrence only or this and all future occurrences. Past occurrences are immutable.
 - Location: physical address **or** remote/virtual (URL)
 - Attendees: **Phase 1** — free-text notes field (names, contacts). **Future** — registered-user invite/RSVP system
 - Can have one or more Reminders attached
@@ -288,7 +320,7 @@ General-purpose alert, the simplest planner entity.
 
 Lifetime goals and aspirations. Not time-bound.
 
-- Fields: title, description, notes, status (Active / Achieved / Abandoned)
+- Fields: title, description, notes, status (Not Started / In Progress / Achieved / Abandoned)
 - Can link to: milestones, tasks, events, schedules, subscriptions (the "how I'll get there")
 - **Structure:** flat list (no sub-items in Phase 1; nested sub-items are a future enhancement)
 - **Ordering:** FCFS by default (creation order). User can manually reorder via drag-and-drop for visual preference only — order has no functional or priority meaning.
@@ -300,6 +332,7 @@ Unstructured idea capture — the void where things exist before they have a pla
 - Fields: title, notes
 - No date/time association
 - Can be **promoted** to: Task · Event · Schedule · Subscription · Milestone · Bucket List item
+- A Limbo item can only be promoted **once**. At the point of promotion the user is given a choice: (a) **keep in Limbo** — the item remains with a link to the promoted entity, or (b) **remove from Limbo** — the item is removed immediately. To create a second entity from the same idea, the user creates it manually.
 
 ---
 
@@ -319,25 +352,28 @@ All entities support **both** soft delete and permanent delete:
 
 - **Soft delete (archive):** entity is hidden from normal views but retained in the database. Can be restored.
 - **Permanent delete:** irreversible. Requires strict, explicit confirmation (separate, deliberate action — not a single click). The action is logged internally in the database for admin/support purposes; not exposed in the user UI.
-- Default behaviour on “delete” is soft delete; permanent delete is a deliberate secondary action.
-
+- Default behaviour on "delete" is soft delete; permanent delete is a deliberate secondary action.
+- **Parent entities with children:** when deleting an entity that has children (e.g. a Milestone with Tasks, an Event with attached Reminders), a modal is shown at delete time presenting options for what to do with child entities — e.g. **orphan** (children become standalone) or **cascade** (children are deleted too). The exact options depend on the entity type.
+- **Account deletion (special case):** deleting a financial account presents a modal asking what to do with its transactions (cascade or orphan). Whichever option is chosen, the deletion is a **soft delete with a 30-day retention window** — the account and its transactions are recoverable for 30 days, after which they are permanently deleted automatically.
 ---
 
 ## Module 4 — Calendar View
 
-All planner entities are surfaced on the calendar with distinct visual treatment (colour coding and icons per entity type, filterable by type/category). This view will eventually be extracted into the Celestine package.
+All planner entities are surfaced on the calendar with distinct visual treatment (colour coding and icons per entity type, filterable by type/category). Each entity type has an **app-assigned default colour**; users can customise the colour per entity type in their settings. This view will eventually be extracted into the Celestine package.
 
 **Entity calendar presence:**
 
 | Entity | Calendar presence |
 |---|---|
-| Milestone | Span/bar across date range |
-| Task (scheduled) | Block on scheduled day(s) |
+| Milestone (Fixed) | Span/bar across start–end date range |
+| Milestone (Flexible / Continuous) | Not shown on calendar grid — appears in the Running Milestones panel |
+| Milestone (Flexible / Bounded) | Span/bar from start date to no-later-than date |
+| Task (scheduled / in progress) | Block on scheduled day(s). Same visual style; status shown in tooltip to avoid clutter. |
 | Schedule | Recurring pattern blocks |
 | Subscription | Due-date indicator |
-| Event | Single/multi-day block |
+| Event | Single/multi-day block; recurring events show on each occurrence |
 | Reminder | Time-point indicator |
-| Task (unscheduled) | Not shown — lives in the task board / unscheduled sidebar |
+| Task (unscheduled) | Not shown — lives in the Task Board unscheduled column |
 | Bucket List / Limbo | Not shown on calendar |
 
 ---
@@ -352,16 +388,19 @@ A dedicated view for managing tasks outside of the calendar grid. Complements th
 - **Unscheduled** — tasks with no start/end date assigned
 - **Scheduled** — tasks with dates assigned but start date not yet reached
 - **In Progress** — start date has passed, end date has not (auto-determined from datetime)
-- **Done** — manually marked as complete by the user
+- **Done** — manually marked as complete by the user. Done tasks remain visible in the Task Board and on the calendar; they are not automatically archived. User can archive or delete them separately via the deletion policy.
+- **Custom statuses** — user-created statuses appear as additional columns
 
-**Priority view tabs** (switchable, applied across all columns):
-- Default list view
+**Priority view tabs** (switchable; priority views **replace** the column layout with their own visualisation rather than layering on top of columns):
+- Default list / column view
 - Eisenhower Matrix (Phase 1)
 - MoSCoW (Phase 1)
 - Value vs Effort (Phase 1)
 - 80/20, WSJF, ICE (Phase 2)
 
-**Filtering:** by milestone, by tag, by assignee (Phase 2 when multi-user is added), by due date range.
+Tasks that have not been placed in the currently active framework appear in an **unplaced tray** alongside the matrix/board. The user can drag tasks from the tray into the framework to assign a placement.
+
+**Filtering:** by milestone, by tag, by status, by priority level, by due date range, by assignee (Phase 2 when multi-user is added).
 
 ---
 
@@ -383,7 +422,7 @@ A dedicated analytics dashboard reachable via drill-down from the main Dashboard
 
 **Other analytics (scope to be defined per feature):**
 - Income vs expense over time
-- Net worth trend (assets minus liabilities across all accounts)
+- Net worth trend (assets minus liabilities across all accounts — only calculable for accounts with an opening balance set; see §2.4)
 - Subscription cost summary
 - Milestone progress and on-time completion rates (future)
 
@@ -391,9 +430,11 @@ A dedicated analytics dashboard reachable via drill-down from the main Dashboard
 
 ## Notifications
 
-**Phase 1:** In-app bell + Email (Mailpit in development via Laravel Sail)
+**Phase 1:** In-app bell + Email (Mailpit in development via Laravel Sail) + PWA push notifications (fires when the app is not open)
 
 **Future:** SMS (third-party provider), webhooks (Discord, Cliq, and others)
+
+**Read/unread model:** A notification is considered read only when the user explicitly dismisses it (click X or "Mark as read"). Opening the bell panel does not auto-read notifications. The Dashboard "Unread reminders" widget reflects the count of undismissed notifications.
 
 ---
 
@@ -412,7 +453,7 @@ Features explicitly deferred and not part of Phase 1:
 | Feature | Notes |
 |---|---|
 | Multi-user sharing | Families and business partners sharing data. Requires ownership scoping, permission model, and invite flows. |
-| Newari (Nepal Sambat) calendar | Display and conversion only initially. |
+| Newari (Nepal Sambat) calendar | Phase 2: display only. Full conversion engine + primary calendar support is a longer-term future possibility. |
 | Nepali UI localisation | Devanagari script throughout the app. |
 | PWA offline support | Read/write with background sync. Potential enhancement. |
 | Bucket list sub-items | Nested items under a bucket list entry. |
@@ -423,6 +464,7 @@ Features explicitly deferred and not part of Phase 1:
 | Retailer loyalty APIs | Lidl, Morrisons, etc. |
 | SMS + webhook notifications | Discord, Cliq, and others. |
 | Android native app | Built after web app is feature-complete. |
+| AI-detected impulse/planned purchase patterns | Future enhancement to Module 6. Python AI service analyses spending history to auto-classify impulse vs planned. |
 | Event attendee invite / RSVP | Registered-user invite system. |
 
 ---
@@ -442,7 +484,7 @@ Items to be defined before implementation of the affected modules.
 | 7 | Tags / labels | All entities | ✅ Resolved — global free-form tags. See Cross-Cutting Features |
 | 8 | Archive vs permanent delete | All entities | ✅ Resolved — both, strict confirmation, internal audit log. See Cross-Cutting Features |
 | 9 | File attachments beyond transactions | All entities | ✅ Resolved — transactions Phase 1 (AI extraction); all entities Phase 2 |
-| 10 | Receipt upload phase + AI service architecture | Financial + Architecture | ✅ Resolved — Phase 1 via Python AI sidecar. See Architecture |
+| 10 | Receipt upload phase + AI service architecture | Financial + Architecture | ✅ Resolved — Phase 1 via Python AI side service. See Architecture |
 | 11 | Backlog naming clash | Planner | ✅ Resolved — idea-capture entity renamed to “Limbo”; unscheduled tasks called “Unscheduled” |
 | 12 | Currency scope (user vs account) | Financial | ✅ Resolved — currency is per financial account |
 | 13 | Subscription end date | Planner | ✅ Resolved — manual deactivation or set end date in advance |
@@ -455,9 +497,36 @@ Items to be defined before implementation of the affected modules.
 | 20 | Account opening balance | Financial | ✅ Resolved — optional; accounts without one show relative change only. See §2.4 |
 | 21 | Cross-currency transfers | Financial | ✅ Resolved — user enters exchange rate at transfer time. See §2.2 |
 | 22 | Income vs expense category separation | Financial | ✅ Resolved — separate hierarchical trees. See §2.6 |
-| 23 | Python AI service communication method | Architecture | Open — decide when building the service |
-| 24 | OCR/AI solution for receipt extraction | Financial / Python service | Open — decide when building the Python service |
-| 25 | User tier feature gating strategy | All modules | Open — define before public launch |
-| 26 | Newari (Nepal Sambat) calendar scope | Celestine / Calendar | Open — future phase |
-| 27 | GDPR, legal, and compliance sweep | All modules | Open — sweep before public launch |
-| 28 | Default advance notice value for notifications | User Settings / Notifications | Open — define when building notification system |
+| 23 | Recurring events gap | Planner | ✅ Resolved — Events support recurrence via the same pattern engine. See §3.6 |
+| 24 | Schedule per-day-variant times | Planner | ✅ Resolved — exceptions list with per-day time overrides. See §3.3 |
+| 25 | Subscription category tree | Financial | ✅ Resolved — uses expense or income tree based on subscription type. See §3.4 |
+| 26 | Task status user-definable | Planner | ✅ Resolved — 4 defaults, user can add custom statuses. See §3.2 |
+| 27 | Cross-account multi-currency aggregation | Dashboard / Analytics | ✅ Resolved — per-transaction conversion rate used; caveat shown. See §2.3 |
+| 28 | Subscription notification vs Reminder entity | Planner | ✅ Resolved — built-in auto system notification + optional Reminder entity. See §3.4 |
+| 29 | Limbo item after promotion | Planner | ✅ Resolved — item remains with link to promoted entity. See §3.8 |
+| 30 | Milestone fields definition | Planner | ✅ Resolved — fields + status lifecycle defined. See §3.1 |
+| 31 | Task priority data storage | Planner | ✅ Resolved — generic score (0–100) + per-framework placement. See §3.2 |
+| 32 | Python AI side service communication method | Architecture | Open — decide when building the service |
+| 33 | OCR/AI solution for receipt extraction | Financial / Python side service | Open — decide when building the Python side service |
+| 34 | User tier feature gating strategy | All modules | Open — define before public launch |
+| 35 | Newari (Nepal Sambat) calendar scope | Celestine / Calendar | ✅ Resolved — Phase 2: display only. Full parity is a future possibility. See Calendar Engine |
+| 36 | GDPR, legal, and compliance sweep | All modules | Open — target regions undecided; sweep before public launch |
+| 37 | Default advance notice value for notifications | User Settings / Notifications | ✅ Resolved — 1 day system default; users can set multiple alerts per subscription. See User Settings, §3.4 |
+| 38 | Delete cascade — parent with children | Cross-cutting | ✅ Resolved — user chooses at delete time via modal (orphan / cascade). See Deletion Policy |
+| 39 | 'Parallel-with' task relationship definition | Planner | ✅ Resolved — prerequisite group; all members must be Done before successor can start. See §3.2 |
+| 40 | Subtask completion rules when parent marked Done | Planner | ✅ Resolved — user prompted (mark all done / keep as-is / cancel). See §3.2 |
+| 41 | Unplaced tasks in priority framework views | Task Board | ✅ Resolved — appear in an unplaced tray alongside the matrix. See Module 5 |
+| 42 | Notification read/unread model | Notifications | ✅ Resolved — explicit dismiss only (click X or mark as read). See Notifications |
+| 43 | Limbo promotion: once or multiple times | Planner | ✅ Resolved — once only; user chooses keep-in-Limbo or remove at promotion time. See §3.8 |
+| 44 | Bucket List status states | Planner | ✅ Resolved — four states: Not Started / In Progress / Achieved / Abandoned. See §3.7 |
+| 45 | Recurring edit scope — 'edit all' including past | Planner | ✅ Resolved — not supported; past is immutable. Missed occurrences can be rescheduled. See §3.3, §3.6 |
+| 46 | Subscription currency vs account currency | Financial | ✅ Resolved — subscription has its own currency; dual amounts stored if currencies differ. See §3.4 |
+| 47 | Task Board additional filter options | Task Board | ✅ Resolved — filter by status and priority level added. See Module 5 |
+| 48 | Calendar entity colour customisation | Calendar / UX | ✅ Resolved — app-assigned default per entity type, user-customisable. See Module 4 |
+| 49 | Transaction split across categories | Financial | ✅ Resolved — supported; each split has amount + category; splits must sum to transaction total. See §2.1, §2.6 |
+| 50 | CSV / OFX import column mapping | Financial | ✅ Resolved — auto-detect + user review/correction step before committing. See §2.1 |
+| 51 | Subscription payment auto-link | Financial / Planner | ✅ Resolved — manual linking by user. See §3.4 |
+| 52 | Account deletion cascade | Financial | ✅ Resolved — user chooses at delete time (cascade / orphan); soft delete with 30-day retention window. See Deletion Policy |
+| 53 | Milestone 'At Risk' trigger conditions | Planner | ✅ Resolved — two independent triggers: task scheduled beyond milestone end date, or any linked task overdue. See §3.1 |
+| 54 | PWA push notifications phase | Notifications | ✅ Resolved — Phase 1. Fires when app is not open. See Notifications, Tech Stack |
+| 55 | Milestone start date required / calendar presence | Planner | ✅ Resolved — start date required for all sub-types. No start date = Draft (not on calendar). Flexible/Continuous shown in Running Milestones panel. See §3.1 |
