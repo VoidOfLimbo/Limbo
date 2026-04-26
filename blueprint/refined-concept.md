@@ -12,21 +12,22 @@ VoidOfLimbo is a unified personal life-management platform anchored by a native 
 
 ## Architecture
 
-**Single Laravel application** with high-cohesion features developed as **local Composer packages** for reusability. Packages are maintained locally and may be published to GitHub / Packagist in the future as standalone libraries.
+**Single Laravel application.** Everything is built directly in the main app first. Features are extracted into standalone local Composer packages **only when there is a clear reuse case** (i.e. the feature would be genuinely useful in another project). Package extraction happens organically during development, not upfront.
 
-**Package philosophy:**
-- Each package follows the **Laravel standard package structure** (service providers, config publishing, migrations, etc.)
-- Every package ships **both** a PHP backend (logic, models, services) and a **Vue component library** (UI building blocks)
-- The consuming app can extend PHP logic and override/customise UI components — the package provides the core, the app can diverge where needed
-- Vue components are designed as **composable lego blocks**: some are plug-and-play (drop in and it works), others are low-level primitives for building custom layouts
-- Package boundaries are grouped by domain affinity — similar modules live in the same package; a new package is created only when a module is clearly distinct enough to warrant it
-- Scope of each package is defined and refined as development progresses — not fully pre-specified upfront
+**Package philosophy (when extraction happens):**
+- Follows the **Laravel standard package structure** (service providers, config publishing, migrations, etc.)
+- Ships **both** PHP backend (logic, models, services) and a **Vue component library** (building blocks + layouts)
+- Two tiers of Vue components: **Primitives** (unstyled, low-level) and **Composed** (plug-and-play, slot/prop-driven)
+- Full-page **layouts** shipped where appropriate — opinionated defaults, fully overridable via slots
+- Consuming app can extend PHP logic and override/customise UI — package is the core, app diverges where needed
+- Packages live in `/packages`, linked via Composer `path` repository + Vite path alias when extracted
 
-**Known packages:**
+**Anticipated future packages** *(not extracted yet — built in main app first):*
 
-| Package | Name | Scope |
+| Likely package | Name | What it will contain |
 |---|---|---|
-| Calendar engine + UI | `Celestine` (a Nakshatra Kālan) | BS/AD calendar logic, date conversion, recurring pattern engine, calendar grid Vue components |
+| Calendar engine + UI | `Celestine` (a Nakshatra Kālan) | BS/AD calendar logic, date conversion, recurring pattern engine, calendar Vue components + layouts |
+| Others | TBD | Extracted as reuse cases emerge during development |
 
 ---
 
@@ -42,12 +43,16 @@ VoidOfLimbo is a unified personal life-management platform anchored by a native 
 | Notifications (prod) | In-app bell + Email | SMS / webhooks (Discord, Cliq) planned for future |
 | Testing | Pest | |
 | Mobile | PWA first | Separate Android app after web app is feature-complete |
+| Localisation | English (Phase 1) | Nepali / Devanagari UI in Phase 2 |
+| Search | Global (cross-module) + local (module-scoped) | Global search from main nav; local search within each module |
 
 ---
 
-## Package: Celestine (a Nakshatra Kālan)
+## Calendar Engine: Celestine (a Nakshatra Kālan)
 
-The central dependency of the entire application. All planning, scheduling, financial, and display features reference this package. Follows Laravel standard package structure with a service provider, publishable config, publishable migrations, and a Vue component library.
+**Currently built in the main app.** Will be extracted into a standalone package when ready. This section describes the intended final shape of the extracted package.
+
+The calendar is the central dependency of the entire application. All planning, scheduling, financial, and display features reference it.
 
 ### PHP Backend
 
@@ -66,8 +71,6 @@ The central dependency of the entire application. All planning, scheduling, fina
 - Holiday / leave integration hooks (consumed by the Schedule module)
 - Extendable — consuming app can extend core classes and bind overrides via the service provider
 
-**Leap year / rolling average strategy:** Rolling 7-day and 30-day financial averages will normalise using a trailing 365-day same-day-of-week window rather than fixed-period averages. This cleanly handles BS month-length irregularities and AD leap years while producing statistically meaningful comparisons.
-
 ### Vue Component Library
 
 The package provides **two tiers of Vue components:**
@@ -83,12 +86,29 @@ The package provides **two tiers of Vue components:**
 - Emit events for all interactions (day-click, event-click, range-select) — the app decides what to do
 - Styles are scoped and themeable; consuming app can publish and override CSS variables
 
+**Leap year / rolling average strategy:** Rolling 7-day and 30-day financial averages will normalise using a trailing 365-day same-day-of-week window rather than fixed-period averages. This cleanly handles BS month-length irregularities and AD leap years while producing statistically meaningful comparisons.
+
 **Calendar views provided:**
 - Daily · Weekly · Monthly · Yearly grid views
 - Mini calendar (for date pickers and sidebars)
 
 **Layouts provided:**
 Where it makes sense the package also ships full **page layouts** for each calendar view (the assembled page with header, navigation, sidebars, and the calendar grid wired together). These are higher-level than composed components — an opinionated default that works out of the box. The consuming app can use them as-is, override via slots, or discard them entirely and build its own layout from composed components and primitives.
+
+---
+
+## User Settings
+
+Per-user account settings that affect behaviour across all modules:
+
+| Setting | Default | Notes |
+|---|---|---|
+| Preferred calendar system | BS (Bikram Sambat) | User-selectable: BS or AD. Affects all date display throughout the app. |
+| Timezone | Auto-detected from browser | User can override. All datetimes stored in UTC internally. |
+| Language / locale | English | Nepali (Devanagari) in Phase 2. |
+| Currency | User-defined on first setup | One primary currency per account. |
+| Notification advance notice | TBD global default | User sets a global default; individual reminders/subscriptions can override. |
+| Region / country | User-defined | Pre-loads confirmed public holidays for the user's region. User can edit, add, or correct holidays at any time (holidays can change after initial announcement). |
 
 ---
 
@@ -131,12 +151,29 @@ Drill-down from every widget navigates to the corresponding module.
 ### 2.3 Currency Model
 Single active currency per account (user-defined). Optional secondary-currency field on a transaction with the **conversion rate locked to the transaction's datetime** (historical rate, not live). This preserves accurate historical value while keeping the data model simple.
 
-### 2.4 Data Model Concepts
+### 2.4 Account Types
+
+| Type | Balance behaviour |
+|---|---|
+| Bank (current/checking) | Asset — positive balance |
+| Savings | Asset — positive balance |
+| Cash | Asset — positive balance |
+| Credit card | Liability — balance represents debt owed |
+
+All account types are user-labelled. The type field determines how the balance is calculated and displayed (asset vs liability).
+
+### 2.5 File Attachments
+
+- **Phase 1:** Receipt image/document upload on transactions only
+- **Phase 2:** File attachments on all major entities (tasks, events, milestones, etc.)
+
+### 2.6 Data Model Concepts
 - `transactions` — TimescaleDB hypertable, partitioned by datetime
 - `categories` — hierarchical (e.g. Food → Groceries → Lidl)
 - `merchants` — normalised payee/merchant records
-- `accounts` — user-defined (cash, bank, card)
-- `receipts` — document store, linked to one or more transactions (phase 2)
+- `accounts` — typed (bank, savings, cash, credit card)
+- `receipts` — document store, linked to one or more transactions (Phase 2)
+- `tags` — global free-form tags, polymorphic relationship to all entity types
 
 ---
 
@@ -209,7 +246,9 @@ Recurring **financial** events (expenses or income).
 
 - Fields: amount, category, merchant, account, frequency, start date
 - Complex frequency rules supported: "first working day of month", "last Friday of month"
+- Working day calculation uses the user's **region holiday calendar** (pre-loaded confirmed holidays + user-customisable; see User Settings)
 - Behaviour: sends a **reminder** when due — user manually logs the transaction. Does not auto-create transactions.
+- Notification timing: global default set in user settings; overridable per subscription
 - Displays payment history (manually logged entries linked to this subscription)
 
 ### 3.5 Reminder
@@ -218,6 +257,7 @@ General-purpose alert, the simplest planner entity.
 
 - Fields: title, datetime
 - Can be linked to any other entity (event, task, subscription, milestone)
+- Notification timing: global default set in user settings; overridable per reminder
 - Delivery: in-app notification bell + email
 
 ### 3.6 Event
@@ -246,11 +286,29 @@ Unstructured idea capture — the "someday / maybe" list.
 
 ---
 
+## Cross-Cutting Features
+
+### Tags
+
+Free-form, user-defined tags applicable to **all entities** across all modules (transactions, tasks, events, milestones, schedules, subscriptions, reminders, bucket list items, backlog items).
+
+- Tags are global (not scoped per module) — a tag created on a transaction is the same tag that can be applied to a task
+- Used for custom grouping and filtering beyond fixed categories
+- Tags are searchable via both global and local search
+
+### Deletion Policy
+
+All entities support **both** soft delete and permanent delete:
+
+- **Soft delete (archive):** entity is hidden from normal views but retained in the database. Can be restored.
+- **Permanent delete:** irreversible. Requires strict confirmation (explicit confirmation prompt; separate from standard destructive actions). The action is logged for accountability.
+- Default behaviour on "delete" is soft delete; permanent delete is a deliberate secondary action.
+
+---
+
 ## Module 4 — Calendar View
 
-**Provided by the Celestine package** (composed Vue components consumed by the main app). The main app passes entity data and configuration via props; interaction events are handled by the app layer.
-
-All planner entities are surfaced on the calendar with distinct visual treatment (colour coding and icons per entity type, filterable by type/category).
+All planner entities are surfaced on the calendar with distinct visual treatment (colour coding and icons per entity type, filterable by type/category). This view will eventually be extracted into the Celestine package.
 
 **Entity calendar presence:**
 
@@ -264,6 +322,8 @@ All planner entities are surfaced on the calendar with distinct visual treatment
 | Reminder | Time-point indicator |
 | Task (unallocated) | Not shown — lives in backlog sidebar |
 | Bucket List / Backlog | Not shown on calendar |
+
+**Future:** Multi-user sharing (family/business collaborators) — Phase 2. Will require ownership scoping, permission model, and invite flows.
 
 ---
 
@@ -292,6 +352,14 @@ Items to be defined before implementation of the affected modules.
 | 1 | Dashboard "purchase habit" — specific insights to surface | Dashboard | ✅ Resolved — see Module 1 |
 | 2 | Bucket list sub-items — support nested items? ordering/prioritisation? | Bucket List | ✅ Resolved — see §3.7 |
 | 3 | Dependency graph / Project View (Gantt) | Task / Milestone | ✅ Resolved — Phase 2 dedicated view, not a calendar mode. See §3.2 |
-| 4 | OCR receipt extraction solution | Financial — Phase 2 | Open |
-| 5 | User tier feature gating strategy | All modules | Open — define before public launch |
-| 6 | Newari (Nepal Sambat) calendar scope and timeline | Celestine package | Open — future phase |
+| 4 | Multi-user sharing (families, business partners) | All modules | ✅ Resolved — Phase 2. Single-user in Phase 1. |
+| 5 | Public holiday data source | Schedule / Subscription | ✅ Resolved — pre-loaded confirmed holidays per region + user-editable |
+| 6 | PWA offline support | Mobile / PWA | ✅ Resolved — not in Phase 1; potential future enhancement |
+| 7 | Tags / labels | All entities | ✅ Resolved — global free-form tags, all entities. See Cross-Cutting Features |
+| 8 | Archive vs permanent delete | All entities | ✅ Resolved — both, with strict confirmation + accountability log. See Cross-Cutting Features |
+| 9 | File attachments beyond transactions | All entities | ✅ Resolved — transactions only (Phase 1); all entities (Phase 2) |
+| 10 | OCR receipt extraction solution | Financial — Phase 2 | Open |
+| 11 | User tier feature gating strategy | All modules | Open — define before public launch |
+| 12 | Newari (Nepal Sambat) calendar scope and timeline | Celestine / Calendar | Open — future phase |
+| 13 | GDPR, legal, and compliance sweep | All modules | Open — sweep before public launch |
+| 14 | Default advance notice value for notifications | User Settings / Notifications | Open — define when building notification system |
