@@ -1,26 +1,36 @@
-/** Copilot ignore this file
+/** Copilot ignore this file unless asked to process it
   * This is a raw concept file where I am jotting down my thoughts before confirming on it.
   * This is so that I myself have point of reference for the decisions I have made.
   * We will have a multi project architecture,
  */
 
-User access the webapp and they see a dashboard page. The dashboard page gives hilight for the day in general. It shows the expense history for the rolling 7 days vs the average for that day or (togglable) rolling 30 days vs the average for that date. (oh boy, leap year is going to be fun). Dashboard will also show what is the most popular item that was purchased.
+ for database I want to use timeseries database using pgsql as the backend. I want to use timeseries database because it is optimized for handling time-series data, which is what we will be dealing with in this app. We will be tracking expenses, income, and other financial data over time, and a timeseries database will allow us to efficiently store and query this data. Additionally, a timeseries database will allow us to easily perform calculations and aggregations on the data, such as calculating the average expenses for a given day or week, or comparing expenses across different time periods. 
 
+User logs into the webapp and they see a dashboard page. The dashboard page gives hilight for the day in general. It shows the expense history for the rolling 7 days vs the average for that day or (tabs) rolling 30 days vs the average for that date. (oh boy, leap year is going to be fun). Dashboard will also show purchase habbit. {more things added later}. The idea is to give high level overview and then be able to drilldown.
 
+We will use nepali calender (BS) that supports AD and newari too. We beed to build our own calendar engine. read https://github.com/dantwoashim/Project_Parva for inspiration. We need to create a package and use it locally for now, we will call the package. The calendar will be one of the core features of the app, and a lot of other features will be dependent on it. The calendar will be used for scheduling, planning, and tracking various events and tasks. It will also be used for financial planning and tracking expenses. The calendar will have different views such as daily, weekly, monthly, and yearly. Users will be able to create events, set reminders, and track their progress. The calendar will also have a feature for recurring events and tasks.
 
-The calender will be supported in 2 formats, AD and BS. We beed to build our own calendar engine. read https://github.com/dantwoashim/Project_Parva for inspiration. The calendar will be one of the core features of the app, and a lot of other features will be dependent on it.
-We will need 
+user will be able to manually enter their purchase details or upload a receipt and the app will extract the details, we need to find a best way to do this. user will also be able to enter their banking transaction, income or expenditure, that are not just purchase recipts. In future we can also integrate with bank APIs to automatically fetch the transaction details. We can also look into linking with Lidl, morrissions and so on if they provide APIs for fetching purchase details but this is would like to have feature.
 
-so i was thinking that in a calender users can plan anything
+I am thinking that in a calender users can plan anything
 - milestone: This is simple high level planning that does not go into day to day details. For example launching a app. There is two ways:
-    - Fixed milestone: user is sure when they would like to start, and when they would like to have it done by. The deadline/enddate can be 
-    - Flexible milestone: 
+    - Fixed milestone: user is sure when they would like to start, and when they would like to have it done by. The deadline/enddate can be hard or soft. hard deadline can be updated to be soft and vice versa but this change will need hard confirmation and strict tracking. the milestone itself should keep this tracked. 
+    - Flexible milestone: This can be continious meaning unless it is manually stopped by user it will keep on existing or it can have no more than this date which will disable it and user can choose to extend it or stop it but will not be displayed in the calender.
 
-If the milestone comes with hard deadline or if it is softdeadline. This would be a start date and end date kind of thing which will not have any starttime or endtime involved meaning whole day event throughout. Alternatively a milestone can have start date 
+milestones will have tasks, and tasks can have subtasks. Tasks and subtasks need have start datetime and end datetime or will be marked as unallocated. The way this will work is user sets up a milestone tha they will make an app by june. then to achieve that misestone user will plan out necessary tasks / subtasks. They task /subtask my not have start and end date assigned yet. only the tasks with start and end assigned will be considered otherwise they are considered to be in backlog or to do. a task can be made subtask of another task, a task can run in parral to another task, a task can be dependent on another task. All the task should be displayed in MoSCoW (most of the work) view, 80/20 view, 4 quadrant view (eisenhower matrix), Value vs effort view,  WSJF and ICE view. In future we will add more options.
+
 - schedule: this is something that is very closely related to times. There could be schedule such as go to bed before 9PM, wakeup at 6AM and so on. some schedules my not occour on certain days such as monday to friday 9-5 at work but not sat - sun, bank holiday, on leave(annual, sick,...). The schedule could be different for sat - sun compared to  mon - fri or for specific dates. When editing the schedule we need to confirm if it is only for that specific occurance or is it for all occurance after this. When creating a schedule go to work, user can set start and end time, can chose the days they want this to occour at, set exception on specific day of start and end is different such as friday myght be early end
 
-There could be weekly schedule such as pay your staff on friday every week. There could be monthly schedule such as pay your rent first working day of every month
+There could be weekly schedule such as pay your staff on friday every week. There could be monthly schedule such as pay your rent first working day of every month and so on.
 
-### Questions
+- subscription: this is a type of reminder that is related to schedule but it is more specific to financial planning. This is for recurring expenses or income that user has. The app will remind them of the upcoming subscription and also show them the history of that subscription.
 
-- is it worth using timeseries database for our case?
+- reminder: this is a general reminder that can be used for anything. It can be related to schedule or subscription but it can also be for something else. For example, user can set a reminder to call their friend on their birthday, or to buy a gift for their friend on their birthday. The reminder will have a date and time associated with it and user will be notified when the reminder is due.
+
+- event: this is a general event that can be used for anything. It can be related to schedule or subscription but it can also be for something else. For example, user can set an event for their birthday, or for a party they are hosting. The event will have a date and time associated with it and user will be notified when the event is due. Event is also associated with a location as well or it be remote. Event can also have a description and a list of attendees. User can also set a reminder for the event.
+
+- task: this is a general task that can be used for anything. It can be related to schedule or subscription but it can also be for something else. For example, user can set a task to buy groceries, or to clean the house. The task will have a date and time associated with it and user will be notified when the task is due. Task can also have a description and a list of subtasks. User can also set a reminder for the task. ususally task will be associated with a milestone but it can also be independent of any milestone. Task can also be associated with an event as well. Task can also be associated with a schedule as well. Task can also be associated with a subscription as well.
+
+- bucket-list: this is a general list of things that user wants to do in their lifetime. This is not related to time but it is related to user's goals and aspirations. User can add items to their bucket list and also mark them as completed when they have achieved them. events, tasks, milestones, schedules, subscriptions can be associated with bucket list items as well. For example, user can have a bucket list item to travel to Japan and they can associate it with a milestone to save money for the trip, a task to book the flight tickets, an event for the trip itself and so on.
+
+- backlog: this is a general list of things that user wants to do but has not yet planned out. this is just a conceptual and a simple want to do list, it is not associated with any time or schedule. this is unplanned concepts that can become a task, event, schedule, subscription or milestone in the future. User cna have notes associated with the backlog items.
